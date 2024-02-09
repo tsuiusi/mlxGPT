@@ -21,14 +21,17 @@ Components of NanoGPT:
 * Batch norm has to estimate because it’s impractical to go through all the weights (Eq. 2)
 * µ and σ are calculated using the empirical samples from the current mini-batch, which constraints the size of the batch and is hard to apply to RNNs. 
 
-Specifically, for the ith summed input in the lth layer, the batch normalization method rescales the summed inputs according to their variances under the distribution of the data:
-~[batchnorm](/images/batchnorm.png)
-Where $a^(-l)i\_i$ is normalized summed inputs to the $i^th$ hidden unit in the $l^th$ layer and $g_i$ is a gain parameter scaling the normalized activation before the non-linear activation function.
+Specifically, for the $i^{th}$ summed input in the $l^{th}$ layer, the batch normalization method rescales the summed inputs according to their variances under the distribution of the data:
+![batchnorm](/images/batchnorm.png)
+Where $a^{-l}^ i\_i$ is normalized summed inputs to the $i^{th}$ hidden unit in the $l^{th}$ layer and $g_i$ is a gain parameter scaling the normalized activation before the non-linear activation function.
+}
+> $a^l^$: the vector representation of the summed inputs to the neurons in that layer
 
-> $a^l$: the vector representation of the summed inputs to the neurons in that layer
 > $g_i$: gain parameter, used to scale the weights, helps control the variance of the outputs of neurons
-> $σ\_i^'$: the standard deviation fo activations $a\_i^'$ over the batch of data
-> $µ\_i^'$: mean of activations of $a\_i^'$ over the batch of data
+
+> $σ\_i^'^$: the standard deviation of activations $a\_i^'$ over the batch of data
+
+> $µ\_i^'^$: mean of activations of $a\_i^'$ over the batch of data
 
 
 **Layer normalization**
@@ -43,12 +46,13 @@ Where H denotes the no. hidden units in the layer. Unlike BatchNorm, LayerNorm d
 Note that the normalization terms only depend on the summed inputs to a layer in the *current time step*. It also has *only one set* of gain and bias parameters shared over all time steps.
 
 **In RNN**
-The summed inputs in the recurrent layer are computed from the current input $x^t$ and previous vector of hidden states $h^(t-1)$, which are computed as $a^t$ = $W_(hh)h^(t-1) + W_(xh)x^t$. 
+
+The summed inputs in the recurrent layer are computed from the current input $x^t$ and previous vector of hidden states $h^{t-1}$, which are computed as $a^t$ = $W_{hh} h^{t-1} + W_{xh} x^t$. 
 
 The LayerNorm-ed recurrent layer recenters and rescales the activations using extra terms:
 ![extraterms](/images/extraterms.png)
 
-Where $W_(hh)$ is the recurrent hidden to hidden weights and $W_(xh)$ are the bottom up input to hidden weights.
+Where $W_{hh}$ is the recurrent hidden to hidden weights and $W_{xh}$ are the bottom up input to hidden weights.
 > The O. thing is the elem-wise multiplication between 2 vectors
 > b & g are the bias and gain params, same dimension as $h^t$
 

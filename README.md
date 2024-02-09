@@ -22,16 +22,18 @@ Components of NanoGPT:
 * µ and σ are calculated using the empirical samples from the current mini-batch, which constraints the size of the batch and is hard to apply to RNNs. 
 
 Specifically, for the $i^{th}$ summed input in the $l^{th}$ layer, the batch normalization method rescales the summed inputs according to their variances under the distribution of the data:
+
 ![batchnorm](/images/batchnorm.png)
+
 Where $a^{-l}^ i\_i$ is normalized summed inputs to the $i^{th}$ hidden unit in the $l^{th}$ layer and $g_i$ is a gain parameter scaling the normalized activation before the non-linear activation function.
 }
-> $a^l^$: the vector representation of the summed inputs to the neurons in that layer
+> $a^l$: the vector representation of the summed inputs to the neurons in that layer
 
 > $g_i$: gain parameter, used to scale the weights, helps control the variance of the outputs of neurons
 
-> $σ\_i^'^$: the standard deviation of activations $a\_i^'$ over the batch of data
+> $σ\_i^\'$: the standard deviation of activations $a\_i^\'$ over the batch of data
 
-> $µ\_i^'^$: mean of activations of $a\_i^'$ over the batch of data
+> $µ\_i^\'$: mean of activations of $a\_i^\'$ over the batch of data
 
 
 **Layer normalization**
@@ -56,7 +58,7 @@ Where $W_{hh}$ is the recurrent hidden to hidden weights and $W_{xh}$ are the bo
 > The O. thing is the elem-wise multiplication between 2 vectors
 > b & g are the bias and gain params, same dimension as $h^t$
 
->. In a layer normalized RNN, the normalization terms make it invariant to re-scaling all of the summed inputs to a layer, which results in much more stable hidden-to-hidden dynamics.
+> In a layer normalized RNN, the normalization terms make it invariant to re-scaling all of the summed inputs to a layer, which results in much more stable hidden-to-hidden dynamics.
 
 
 

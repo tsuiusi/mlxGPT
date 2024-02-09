@@ -43,7 +43,7 @@ class CausalSelfAttention(nn.Module):
         # query, key, value for all heads in batch and move head forward to be the batch dim
         q, k, v = core.split(self.c_attn(x), self.n_embd, axis=2)
         k = core.transpose(core.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
-        q = core.transpose(core.reshape(q, [B, T, self.n_head, C // self.n_head)], axes=[1, 2])
+        q = core.transpose(core.reshape(q, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
         v = core.transpose(core.reshape(v, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
 
         if past_kv is not None:
@@ -62,7 +62,7 @@ class CausalSelfAttention(nn.Module):
         # skip because we don't have flash
         # not sure if k.size is the right thing to put here
         att = (q @ core.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.size(-1)))
-        att = 
+        # att = 
 
         
 

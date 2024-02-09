@@ -30,6 +30,7 @@ masked_scores = scores.masked_fill(mask, float('-inf'))
 # Use dim=1 to apply softmax across each row
 softmax_scores = F.softmax(masked_scores, dim=1)
 
+# Another way to apply masked_fill in torch
 maskedinf = scores
 maskedinf[mask] = float('-inf')
 
@@ -50,5 +51,7 @@ mask = core.array([
 print(scores)
 print(mask)
 
+# what if I initialize it to be -inf and multiply it by the mask matrix
+# just use a sufficiently negative number (e.g -1e9) and it'd work!!!!
 mask = core.where(mask, core.array(float('-inf')), core.array(0))
 print(mask)

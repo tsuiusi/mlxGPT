@@ -3,17 +3,44 @@ from dataclasses import dataclass
 
 import mlx
 import mlx.nn as nn
-import mlx.core as core
+import mlx.mx as mx
 
 class LayerNorm(nn.Module):
     def __init__(self, ndim, bias):
         super().__init__()
         # I don't think I need to initialize the weights and biases because lazy eval
-        self.weights = core.ones((ndims, ))
-        self.bias = core.ones((ndims, )) if bias else None
+        self.weights = mx.ones((ndims, ))
+        self.bias = mx.ones((ndims, )) if bias else None
 
     def forward(self, x):
         return nn.LayerNorm(x, self.weights, dims=ndims, eps=1e-5) 
+
+class LayerNorm2(nn.Module):
+    # Affine is a type of layer where each input is connected to each output by a learnable weight
+    # eps is epsilon, the tolerance for how close the solution needs to be to 0 before it's considered (?)
+    def __init__(self, dims: int, eps: float = 1e-5, affine: bool = True, bias: bool = False):
+        super().__init__()
+        if affine:
+            self.bias = bias
+            if bias:
+                self.bias = mx.zeros((dims,))
+            self.weight = mx.ones((dims,))
+        self.eps = eps
+        self.dims = dims
+
+    def forward(self, x):
+        # in pytorch the mean and standard deviation (standard deviation = √var(x)) is calculated over the last D dimensions and D is the dimension of normalized_shape. 
+        mean = mx.mean(x, axis=-1, keepdims=True)
+        var = mx.var(x, axis=-1, keepdims=True)
+        # first part of the pytorch equation, input - E(x)/√var + eps
+        # E(x) is mean
+        x = (x - mean) / mx.rsqrt(var + self.eps)
+        if self.bias:
+            return (self.weight * x + self.bias) if "weight" in self else x
+        else:
+            return (self.weight * x) if "weight" in self else x
+
+
 
 class CausalSelfAttention(nn.Module):
     def __init__(self, config):
@@ -35,22 +62,22 @@ class CausalSelfAttention(nn.Module):
 
         # Flash attention: mechanism that optimizes self-attention calculation in transformer models, improves efficiency
         # Was implemented in the original but not available in mlx yet, will add later
-        self.register_buffer('bias', core.reshape(core.tril(core.ones([config.block_size, config.block_size])), [1, 1, config.bloc_size, config.block_size]))
+        self.register_buffer('bias', mx.reshape(mx.tril(mx.ones([config.block_size, config.block_size])), [1, 1, config.bloc_size, config.block_size]))
 
     def forward(self, x, past_kv=None, use_cache=False):
-        B, T, C = x.size()
+        B, T, C = x.shape
         
         # query, key, value for all heads in batch and move head forward to be the batch dim
-        q, k, v = core.split(self.c_attn(x), self.n_embd, axis=2)
-        k = core.transpose(core.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
-        q = core.transpose(core.reshape(q, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
-        v = core.transpose(core.reshape(v, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
+        q, k, v = mx.split(self.c_attn(x), self.n_embd, axis=2)
+        k = mx.transpose(mx.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
+        q = mx.transpose(mx.reshape(q, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
+        v = mx.transpose(mx.reshape(v, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
 
         if past_kv is not None:
             past_key = past_kv[0]
             past_value = past_kv[1]
-            k = core.concatenate([past_key, k], axis=-2)
-            v = core.concatenate([past_value, v], axis=-2)
+            k = mx.concatenate([past_key, k], axis=-2)
+            v = mx.concatenate([past_value, v], axis=-2)
 
         FULL_T = k.shape[-2]
         if use_cache is True:
@@ -61,8 +88,8 @@ class CausalSelfAttention(nn.Module):
         # causal self-attention (see drive for notes)
         # skip because we don't have flash
         # not sure if k.size is the right thing to put here
-        att = (q @ core.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.size(-1)))
-        # att = 
+        att = (q @ mx.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.shape(-1)))
+        # mask = mx.reshape( 
 
         
 

@@ -25,7 +25,7 @@ Specifically, for the $i^{th}$ summed input in the $l^{th}$ layer, the batch nor
 
 ![batchnorm](/images/batchnorm.png)
 
-Where $a^{-l}^ i\_i$ is normalized summed inputs to the $i^{th}$ hidden unit in the $l^{th}$ layer and $g_i$ is a gain parameter scaling the normalized activation before the non-linear activation function.
+Where $a^{-l}\_i$ is normalized summed inputs to the $i^{th}$ hidden unit in the $l^{th}$ layer and $g_i$ is a gain parameter scaling the normalized activation before the non-linear activation function.
 }
 > $a^l$: the vector representation of the summed inputs to the neurons in that layer
 

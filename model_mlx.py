@@ -127,7 +127,7 @@ class Block(nn.Module):
 
         return x
 
-@dataclass
+@dataclass # defines that this is a dataclass and not a normal class
 class GPTConfig:
     block_size: int = 1024
     vocab_size: int = 50304
@@ -138,5 +138,26 @@ class GPTConfig:
     bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster	
     
 
+class GPT(nn.Module):
+    def __init__(self, config):
+        """
+        Initializes a GPT model.
 
+        config configures the hyperparameters of the GPT model
 
+        embedding (nn.Embedding) creates the embedding layer for input tokens
+
+        transformer (List[Block]) is a list of transformer blocks
+
+        out_proj (nn.Linear) is the linear layer for output projection
+        """
+        super().__init__()
+        assert config.vocab_size is not None
+        assert config.block_size is not None
+        self.config = config
+
+        self.wte = nn.Embedding(config.vocab_size, config.n_embd) # Word token embeddings, converts each token in the input sequence into a fixed-size vector.
+        self.wpe = nn.Embedding(config.block_size, config.n_embd) # Word position embeddings, encodes the position of each token in the sequence 
+        # input representation = wte + wpe
+        self.drop = nn.Dropout(config.dropout)
+        self.h = 

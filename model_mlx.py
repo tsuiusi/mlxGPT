@@ -173,7 +173,35 @@ class GPT(nn.Module):
         self.drop = nn.Dropout(config.dropout)
         self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
         self.transformer = [Block(config) for _ in range(config.n_layer)] # creates n no. blocks 
-        self.out_proj = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
+
+
+
+    def forward(self, x, targets=None):
+        b, t = x.size()
+        assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
+        pos = mx.arange(0, t, dtype=
+
+        tok_emb = self.wte(x)
+        pos_emb = self.wpe(pos)
+
+        x = self.drop(tok_emb + pos_emb)
+
+        for i block in self.transformer:
+            x = block(x)
+        x = self.ln_f(x)
+        
+        if targets is not None:
+            logits = self.lm_head(x)
+            # there might be something wrong here i'll have to experiment on this. i don't fully get mlx.core.reshape
+            loss = nn.losses.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+        else:
+            logits = self.lm_head(x)
+            loss = None
+            
+        return logits, loss
+    
+         
     def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         # idx = index
         for _ in range(max_new_tokens):
@@ -189,7 +217,7 @@ class GPT(nn.Module):
             # convert the logits into normalized probabilities
             probs = mx.softmax(logits, axis=-1)
             # sample from the distribution
-            idx_next = 
+            idx_next = probs
 
 
         

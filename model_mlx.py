@@ -64,7 +64,7 @@ class CausalSelfAttention(nn.Module):
         # Flash attention: mechanism that optimizes self-attention calculation in transformer models, improves efficiency
         # Was implemented in the original but not available in mlx yet, will add later
 
-    def forward(self, x, mask, cache):
+    def forward(self, x, mask, cache=None):
         B, T, C = x.shape
         
         # query, key, value for all heads in batch and move head forward to be the batch dim
@@ -121,8 +121,8 @@ class Block(nn.Module):
         self.ln2 = LayerNorm(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
-    def forward(self, x):
-        x = x + self.attn(self.ln1(x))
+    def forward(self, x, mask, cache=None):
+        x = x + self.attn(self.ln1(x), mask)
         x = x + self.mlp(self.ln2(x))
 
         return x
@@ -150,17 +150,23 @@ class GPT(nn.Module):
     Karpathy also included loading pretrained models but I don't feel like doing that rn. Implementing this needs crop_block_size as a prereq.
     """
 
+
+    """
+    To clarify:
+    1. Layernorm takes the input tensor, dimensions, and whatever hyperparams that come preconfigured
+    2. CSA takes the input tensor, mask, and cache, which is preset to None
+    3. MLP takes input tensor only
+    4. Block takes input tensor, mask, and cache, which is again preset to None. I cba to implement it rn
+    """
+
     def __init__(self, config):
         """
         Initializes a GPT model.
 
         config configures the hyperparameters of the GPT model
-
         embedding (nn.Embedding) creates the embedding layer for input tokens
-
         transformer (List[Block]) is a list of transformer blocks
-
-        out_proj (nn.Linear) is the linear layer for output projection
+        lm_head (nn.Linear) is the linear layer for output projection
         """
         super().__init__()
         assert config.vocab_size is not None
@@ -175,13 +181,18 @@ class GPT(nn.Module):
         self.transformer = [Block(config) for _ in range(config.n_layer)] # creates n no. blocks 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
 
+    def sample_next_token(self, x, temp):
+        logits = mx.expand_dims(x[:, -1], axis=0) @ self.wte.weight.T
+        y = logits[:, -1, :]
+        y = mx.random.categorical(y * (1/temp))
+        return y
 
-
-    def forward(self, x, targets=None):
+    def forward(self, x, pos, targets=None):
         b, t = x.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
-        pos = mx.arange(0, t, dtype=
+        pos = mx.arange(0, t, 1, dtype=x.dtype)
 
+        # forward the GPT model 
         tok_emb = self.wte(x)
         pos_emb = self.wpe(pos)
 
@@ -189,6 +200,7 @@ class GPT(nn.Module):
 
         for i block in self.transformer:
             x = block(x)
+
         x = self.ln_f(x)
         
         if targets is not None:
@@ -196,28 +208,14 @@ class GPT(nn.Module):
             # there might be something wrong here i'll have to experiment on this. i don't fully get mlx.core.reshape
             loss = nn.losses.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
         else:
-            logits = self.lm_head(x)
+            logits = self.lm_ head(x)
             loss = None
             
         return logits, loss
-    
-         
-    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
-        # idx = index
-        for _ in range(max_new_tokens):
-            # if the sequence context is growing too long we must crop it at block_size
-            idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
-            # forward the model to get logits for the index in the sequence
-            logits = self(idx_cond)
-            # take the logits at the final step, scale by desired temp
-            logits = logits[:, -1, :] / temperature
-            # crop the logits to only top k options (optional)
-            # not implementing topk but probably sort and pop the array for k=n
-            
-            # convert the logits into normalized probabilities
-            probs = mx.softmax(logits, axis=-1)
-            # sample from the distribution
-            idx_next = probs
 
+    # let me think about this
+    def generate(self, x, max_new_tokens=512, temp=1.0):
+        for _ in range(max_new_tokens):
+            x
 
         

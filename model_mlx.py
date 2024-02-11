@@ -160,4 +160,7 @@ class GPT(nn.Module):
         self.wpe = nn.Embedding(config.block_size, config.n_embd) # Word position embeddings, encodes the position of each token in the sequence 
         # input representation = wte + wpe
         self.drop = nn.Dropout(config.dropout)
-        self.h = 
+        self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
+        self.transformer = [Block(config) for _ in range(config.n_layer)] # creates n no. blocks 
+        self.out_proj = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
+        

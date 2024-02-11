@@ -50,6 +50,7 @@ class CausalSelfAttention(nn.Module):
         # nn.Linear only defines the input dim, output dim, and bias
         # 3 because it's then split into Q K V
         self.c_attn = nn.Linear(config.n_embd, 3* config.n_embd, bias=config.bias)
+
         # output projection
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
         # Regularization
@@ -62,34 +63,39 @@ class CausalSelfAttention(nn.Module):
 
         # Flash attention: mechanism that optimizes self-attention calculation in transformer models, improves efficiency
         # Was implemented in the original but not available in mlx yet, will add later
-        self.register_buffer('bias', mx.reshape(mx.tril(mx.ones([config.block_size, config.block_size])), [1, 1, config.bloc_size, config.block_size]))
 
-    def forward(self, x, past_kv=None, use_cache=False):
+    def forward(self, x, mask, cache):
         B, T, C = x.shape
         
         # query, key, value for all heads in batch and move head forward to be the batch dim
         q, k, v = mx.split(self.c_attn(x), self.n_embd, axis=2)
-        k = mx.transpose(mx.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
-        q = mx.transpose(mx.reshape(q, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
-        v = mx.transpose(mx.reshape(v, [B, T, self.n_head, C // self.n_head]), axes=[1, 2])
+        k = mx.transpose(mx.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
+        q = mx.transpose(mx.reshape(q, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
+        v = mx.transpose(mx.reshape(v, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
 
-        if past_kv is not None:
-            past_key = past_kv[0]
-            past_value = past_kv[1]
+        if cache is not None:
+            past_key = cache[0]
+            past_value = cache[1]
             k = mx.concatenate([past_key, k], axis=-2)
             v = mx.concatenate([past_value, v], axis=-2)
-
-        FULL_T = k.shape[-2]
-        if use_cache is True:
-            present = (k, v)
-        else:
-            present = None
 
         # causal self-attention (see drive for notes)
         # skip because we don't have flash
         # not sure if k.size is the right thing to put here
         att = (q @ mx.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.shape(-1)))
-        # mask = mx.reshape( 
+        mask = mx.reshape(mask, (1, 1, T, T))
+        att = mx.where(mask[:, :, :T, :T] == 0, att , float('-1e9'))
+        att = mx.softmax(att, axis=-1)
+        att = self.attn_dropout(att)
+        y = (att @ v).transpose(0, 2, 1, 3).reshape(B,T,C) # reassemble all the head output side by side; this line is inconsistent with the transpose because i just copied karpathy
+        # he used contiguous here which returns a tensor in the format memory likes, but no such thing in mlx so 0213 it is
+
+        # resid_dropout randomly dropouts residual connections (connections to prev layers) 
+        # c_proj is a linear transformation (projection) applied to the output, which either changes the dimension or prepares layers or something like that.
+        y = self.resid_dropout(self.c_proj(y))
+
+        return y
+
 
         
 

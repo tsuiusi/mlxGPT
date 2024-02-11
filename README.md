@@ -60,11 +60,26 @@ Where $W_{hh}$ is the recurrent hidden to hidden weights and $W_{xh}$ are the bo
 
 > In a layer normalized RNN, the normalization terms make it invariant to re-scaling all of the summed inputs to a layer, which results in much more stable hidden-to-hidden dynamics.
 
+### Causal Self Attention
+![attention](/images/attention.png)
 
+**Self attention**:
+* Self attention is the ability to piece different positions of a single sequence to create a representation of the whole sequence.
+* Attention scores are computed and used to amplify/quieten signals 
 
+**Causality**:
+* Prevents the model looking into the future
+* Achieved by masking
+* This is what I tried to do for three whole days
 
+**How it works**:
+1. A mask is applied to the upper triangular portion of the score matrix and sets them to very negative number (so when softmax is applied, they're irrelevant)
+2. The model processes sequence token by token and predicts the next token based on the shown tokens.
 
+**Scaled Dot Product Attention**:
+The image is split into 3 tensors: Q, K, and V
 
-
+The equation is just this:
+![sdpa](/images/sdpa.png)
 
 

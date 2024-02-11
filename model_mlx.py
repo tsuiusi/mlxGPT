@@ -139,6 +139,17 @@ class GPTConfig:
     
 
 class GPT(nn.Module):
+    """
+    What the GPT contains:
+    1. init: initializes everything, all the hyperparams, etc
+    2. generate
+    3. optimizer
+    4. forward
+    5. estimating model flop utilizaiton (mfu) (kinda unnecessary for this application so far)
+    
+    Karpathy also included loading pretrained models but I don't feel like doing that rn. Implementing this needs crop_block_size as a prereq.
+    """
+
     def __init__(self, config):
         """
         Initializes a GPT model.
@@ -163,4 +174,22 @@ class GPT(nn.Module):
         self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
         self.transformer = [Block(config) for _ in range(config.n_layer)] # creates n no. blocks 
         self.out_proj = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
+        # idx = index
+        for _ in range(max_new_tokens):
+            # if the sequence context is growing too long we must crop it at block_size
+            idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
+            # forward the model to get logits for the index in the sequence
+            logits = self(idx_cond)
+            # take the logits at the final step, scale by desired temp
+            logits = logits[:, -1, :] / temperature
+            # crop the logits to only top k options (optional)
+            # not implementing topk but probably sort and pop the array for k=n
+            
+            # convert the logits into normalized probabilities
+            probs = mx.softmax(logits, axis=-1)
+            # sample from the distribution
+            idx_next = 
+
+
         

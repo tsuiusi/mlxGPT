@@ -31,9 +31,9 @@ Where $a^{-l}\_i$ is normalized summed inputs to the $i^{th}$ hidden unit in the
 
 > $g_i$: gain parameter, used to scale the weights, helps control the variance of the outputs of neurons
 
-> $σ\_i^\'$: the standard deviation of activations $a\_i^\'$ over the batch of data
+> $σ\_i^{\'}$: the standard deviation of activations $a\_i^{\'}$ over the batch of data
 
-> $µ\_i^\'$: mean of activations of $a\_i^\'$ over the batch of data
+> $µ\_i^{\'}$: mean of activations of $a\_i^{\'}$ over the batch of data
 
 
 **Layer normalization**

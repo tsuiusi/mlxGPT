@@ -113,8 +113,30 @@ class MLP(nn.Module):
 
         return x
 
+class Block(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.ln1 = LayerNorm(config.n_embd, bias=config.bias)
+        self.attn = CausalSelfAttention(config)
+        self.ln2 = LayerNorm(config.n_embd, bias=config.bias)
+        self.mlp = MLP(config)
 
+    def forward(self, x):
+        x = x + self.attn(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
 
+        return x
+
+@dataclass
+class GPTConfig:
+    block_size: int = 1024
+    vocab_size: int = 50304
+	n_layer: int = 12
+    n_head: int = 12
+    n_embd: int = 768
+    dropout: float = 0.0
+    bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster	
+    
 
 
 

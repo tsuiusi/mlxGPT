@@ -214,7 +214,9 @@ class GPT(nn.Module):
         return logits, loss
 
     # let me think about this
-    def generate(self, idx, max_new_tokens=512, temp=1.0):
+    # What is the process of generation
+    # Get the input, forward it to get the next token, get the logits at the final step and scale with temperature, (optionally) crop them, apply softmax to get probabilities, sample from the distribution, append to the current sequence, continue.
+    def generate(self, idx, max_new_tokens=512, temp=1.0, top_k=None):
         for _ in range(max_new_tokens):
             idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
             logits = self(idx_cond)
@@ -222,8 +224,28 @@ class GPT(nn.Module):
             
             # Optionally crop the logits to only the top_k options
             if top_k is not None:
-                v, _ = custom_topk(logits, min(top_k, logits.shape[-1]))
-                v_shape = v.shape
+                v, _ = topk(logits, min(top_k, logits.shape[-1]))
+                logits[logits < v[:, [-1]]] = = float('-1e9')
+            
+            # Convert to probabilities
+            probs = mx.softmax(logits)
+            # Sample from distribution
+            idx_next = mx.random.categorical(probs, 1)
+            # Append to current sequence
+            idx = mx.concatenate([idx, mx.expand_dims(idx_next, axis=0)], axis=1)
+
+        return idx
+
+def topk(x, k):
+    flatten = mx.reshape(x, (-1,))
+    sorted_idx = mx.argsort(flatten)
+    sorted_idx = mx.take(sorted_idx, mx.arange(sorted_idx.size -1, -1, -1))
+
+    topk_indices = mx.take(sorted_idx, mx.arange(0, k))
+    topk_values = mx.take(flatten, topk_indices)
+    return mx.expand_dims(topk_values, axis=0)
+
+     
 
                 # Computes the index of the last element 
 

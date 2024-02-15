@@ -214,8 +214,18 @@ class GPT(nn.Module):
         return logits, loss
 
     # let me think about this
-    def generate(self, x, max_new_tokens=512, temp=1.0):
+    def generate(self, idx, max_new_tokens=512, temp=1.0):
         for _ in range(max_new_tokens):
-            x
+            idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
+            logits = self(idx_cond)
+            logits = logits[:, -1, :] / temp
+            
+            # Optionally crop the logits to only the top_k options
+            if top_k is not None:
+                v, _ = custom_topk(logits, min(top_k, logits.shape[-1]))
+                v_shape = v.shape
 
-        
+                # Computes the index of the last element 
+
+
+

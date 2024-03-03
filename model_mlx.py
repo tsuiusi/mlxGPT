@@ -236,6 +236,15 @@ class GPT(nn.Module):
 
         return idx
 
+    @classmethod # takes cls as the first input, allows calls to the class directly and return access this method without passing anything through? making it intrinsic to the class?
+    def from_pretrained(cls, model_type, override_args=None):
+        assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
+        override_args = override_args or {} # Default to empty dict
+
+        # Only dropout can be overridden, see notes below (i'm just copying karpathy's notes, maybe explain a little for myself)
+        assert all
+        # not complete, sleepytime
+
 def topk(x, k):
     flatten = mx.reshape(x, (-1,))
     sorted_idx = mx.argsort(flatten)

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import mlx
 import mlx.nn as nn
-import mlx.mx as mx
+import mlx.core as mx
 
 class LayerNorm(nn.Module):
     def __init__(self, ndim, bias):
@@ -131,8 +131,8 @@ class Block(nn.Module):
 class GPTConfig:
     block_size: int = 1024
     vocab_size: int = 50304
-	n_layer: int = 12
-    n_head: int = 12
+	# n_layer: int = 12
+    n_head: int = 12    
     n_embd: int = 768
     dropout: float = 0.0
     bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster	
@@ -198,7 +198,7 @@ class GPT(nn.Module):
 
         x = self.drop(tok_emb + pos_emb)
 
-        for i block in self.transformer:
+        for block in self.transformer:
             x = block(x)
 
         x = self.ln_f(x)
@@ -208,7 +208,7 @@ class GPT(nn.Module):
             # there might be something wrong here i'll have to experiment on this. i don't fully get mlx.core.reshape
             loss = nn.losses.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
         else:
-            logits = self.lm_ head(x)
+            logits = self.lm_head(x)
             loss = None
             
         return logits, loss
@@ -225,7 +225,7 @@ class GPT(nn.Module):
             # Optionally crop the logits to only the top_k options
             if top_k is not None:
                 v, _ = topk(logits, min(top_k, logits.shape[-1]))
-                logits[logits < v[:, [-1]]] = = float('-1e9')
+                logits[logits < v[:, [-1]]] = float('-1e9')
             
             # Convert to probabilities
             probs = mx.softmax(logits)

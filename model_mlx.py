@@ -282,6 +282,11 @@ class GPT(nn.Module):
         # which means we have to transpose the weights when we import them
         assert len(sd_keys_hf) == len(sd_keys), f'mismatched keys: {len(sd_keys_hf) != {len(sd_keys)}'
         for keys in sd_keys_hf:
+            if any(k.endswith(w) for w in transposed):
+                # special treatement for the conv1d weights we need to transpose
+                assert sd_hf[k].shape[::-1]
+                # this part i have to understand then rewrite because he uses torch.no_grad() but i obviously can't and not sure if i even need to???
+                # bruh
 
 
 

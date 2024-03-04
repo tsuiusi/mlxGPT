@@ -242,8 +242,49 @@ class GPT(nn.Module):
         override_args = override_args or {} # Default to empty dict
 
         # Only dropout can be overridden, see notes below (i'm just copying karpathy's notes, maybe explain a little for myself)
-        assert all
-        # not complete, sleepytime
+        assert all(k=='dropout' for k in override_args)
+        from transformers import GPT2LMHeadModel
+        print(f'Loading weights from pre-trained GPT: {model_type}')
+
+        # n_layer, n_head, and n_embd depends on model type
+        config_args = {
+                'gpt2': dict(n_layer=12, n_head=12, n_embd=768),
+                'gpt2-medium': dict(n_layer=24, n_head=16, n_embd=1024),
+                'gpt2-large': dict(n_layer=36, n_head=20, n_embd=1280),
+                'gpt2-xl': dict(n_layer=48, n_head=25, n_embd=1600),
+        }[model_type]
+        print("forcing vocab_size=50257, block_size=1024, bias=True")
+        config_args['vocab_size'] = 50257 # Always 50257 for GPT model checkpoints
+        config_args['block_size'] = 1024 # Always 1024
+        config_args['bias'] = True # Always True
+
+        if 'dropout' in override_args:
+            print(f'overriding dropout rate to {override_args["dropout"]}')
+            config_args['dropout'] = override_args['dropout']
+
+        # Create from scratch initialized miniGPT model
+        config = GPTConfig(**config_args)
+        model = GPT(config)
+        sd = model.state_dict()
+        sd_keys = sd.keys()
+        sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')] # discard this mask/buffer, not param
+
+        # init huggingface/transformers model
+        model_hf = GPTLMHeadModel.from_pretrained(model_type)
+        sd_hf = model_hf.state_dict()
+         
+        # copy while ensuring all the parameters are aligned and match in names and shapes
+        sd_keys_hf = sd_hf.keys()
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')] # ignore, just buffer
+        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
+        transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
+        # basically the openai checkpoints use a conv1d module, but we only want to use a vanilla linear
+        # which means we have to transpose the weights when we import them
+        assert len(sd_keys_hf) == len(sd_keys), f'mismatched keys: {len(sd_keys_hf) != {len(sd_keys)}'
+        for keys in sd_keys_hf:
+
+
+
 
 def topk(x, k):
     flatten = mx.reshape(x, (-1,))

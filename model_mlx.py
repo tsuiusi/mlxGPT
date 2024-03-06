@@ -288,6 +288,12 @@ class GPT(nn.Module):
                 # this part i have to understand then rewrite because he uses torch.no_grad() but i obviously can't and not sure if i even need to???
                 # bruh
 
+            else:
+                assert sd_hf[k::].shape[::-1] == sd[k].shape
+                # same thing to copy params
+
+        return model
+
 
 
 

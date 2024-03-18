@@ -84,7 +84,7 @@ class CausalSelfAttention(nn.Module):
         # not sure if k.size is the right thing to put here
         att = (q @ mx.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.shape(-1)))
         mask = mx.reshape(mask, (1, 1, T, T))
-        att = mx.where(mask[:, :, :T, :T] == 0, att , float('-1e9'))
+        att = mx.where(mask[:, :, :T, :T] == 0, att , float('-inf'))
         att = mx.softmax(att, axis=-1)
         att = self.attn_dropout(att)
         y = (att @ v).transpose(0, 2, 1, 3).reshape(B,T,C) # reassemble all the head output side by side; this line is inconsistent with the transpose because i just copied karpathy
@@ -225,7 +225,7 @@ class GPT(nn.Module):
             # Optionally crop the logits to only the top_k options
             if top_k is not None:
                 v, _ = topk(logits, min(top_k, logits.shape[-1]))
-                logits[logits < v[:, [-1]]] = float('-1e9')
+                logits[logits < v[:, [-1]]] = float('-inf')
             
             # Convert to probabilities
             probs = mx.softmax(logits)
@@ -280,7 +280,7 @@ class GPT(nn.Module):
         transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
         # basically the openai checkpoints use a conv1d module, but we only want to use a vanilla linear
         # which means we have to transpose the weights when we import them
-        assert len(sd_keys_hf) == len(sd_keys), f'mismatched keys: {len(sd_keys_hf) != {len(sd_keys)}'
+        assert len(sd_keys_hf) == len(sd_keys), f'mismatched keys: {len(sd_keys_hf) != {len(sd_keys)}}'
         for keys in sd_keys_hf:
             if any(k.endswith(w) for w in transposed):
                 # special treatement for the conv1d weights we need to transpose

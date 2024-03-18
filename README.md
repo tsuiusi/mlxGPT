@@ -80,6 +80,7 @@ Where $W_{hh}$ is the recurrent hidden to hidden weights and $W_{xh}$ are the bo
 The image is split into 3 tensors: Q, K, and V
 
 The equation is just this:
+
 ![sdpa](/images/sdpa.png)
 
 

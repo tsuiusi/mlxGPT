@@ -1,5 +1,23 @@
 # mlxGPT: Rewrite of Karpathy's NanoGPT in mlx
 
+
+## To do:
+* Find/gather a dataset to train
+    * Tokenizer
+    * Getting GPUs ready and initializing device deets
+    * Getting dataset in a format ready to be trained
+    * Format to download and extract the data
+* Save and load model weights (GPT-2?)
+    * Getting the model weights; loading them
+
+What do I need:
+* Optimizer
+* Eval functions (loss, accuracy, evaluation)
+* Training loop
+* Saving my weights
+* Hyperparameters for GPT2
+* Model 
+
 ---
 ## Devlog
 ### 9th Feb
@@ -12,8 +30,6 @@ Components of NanoGPT:
 * Causal Self-Attention
 * Multi-Layer Perceptron (MLP)
 * GPT
-
-> *gradatim ferociter*
 
 ### LayerNorm
 * https://arxiv.org/pdf/1607.06450.pdf

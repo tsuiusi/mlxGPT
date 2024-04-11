@@ -16,7 +16,7 @@ class LayerNorm(nn.Module):
         return nn.LayerNorm(x, self.weights, dims=ndims, eps=1e-5) 
 
 class LayerNorm2(nn.Module):
-    # Affine is a type of layer where each input is connected to each output by a learnable weight
+    # Affine is a type of layer where each input is connected to each output by a learnable weight (in other words, fully connected)
     # eps is epsilon, the tolerance for how close the solution needs to be to 0 before it's considered (?)
     def __init__(self, dims: int, eps: float = 1e-5, affine: bool = True, bias: bool = False):
         super().__init__()
@@ -285,8 +285,6 @@ class GPT(nn.Module):
             if any(k.endswith(w) for w in transposed):
                 # special treatement for the conv1d weights we need to transpose
                 assert sd_hf[k].shape[::-1]
-                # this part i have to understand then rewrite because he uses torch.no_grad() but i obviously can't and not sure if i even need to???
-                # bruh
 
             else:
                 assert sd_hf[k::].shape[::-1] == sd[k].shape
@@ -305,10 +303,3 @@ def topk(x, k):
     topk_indices = mx.take(sorted_idx, mx.arange(0, k))
     topk_values = mx.take(flatten, topk_indices)
     return mx.expand_dims(topk_values, axis=0)
-
-     
-
-                # Computes the index of the last element 
-
-
-

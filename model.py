@@ -116,9 +116,9 @@ class MLP(nn.Module):
 class Block(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.ln1 = LayerNorm(config.n_embd, bias=config.bias)
+        self.ln1 = LayerNorm2(config.n_embd, bias=config.bias)
         self.attn = CausalSelfAttention(config)
-        self.ln2 = LayerNorm(config.n_embd, bias=config.bias)
+        self.ln2 = LayerNorm2(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
     def forward(self, x, mask, cache=None):
@@ -291,6 +291,9 @@ class GPT(nn.Module):
                 # same thing to copy params
 
         return model
+    
+    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+        # Start with all the candidate parameters
 
 
 

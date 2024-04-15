@@ -294,6 +294,7 @@ class GPT(nn.Module):
     
     def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
         # Start with all the candidate parameters
+        param_dict = {pn: p for pn, p in self.named_parameters()} # this doesn't really work?
 
 
 

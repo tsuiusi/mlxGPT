@@ -9,11 +9,11 @@ class LayerNorm(nn.Module):
     def __init__(self, ndim, bias):
         super().__init__()
         # I don't think I need to initialize the weights and biases because lazy eval
-        self.weights = mx.ones((ndims, ))
-        self.bias = mx.ones((ndims, )) if bias else None
+        self.weights = mx.ones((ndim, ))
+        self.bias = mx.ones((ndim, )) if bias else None
 
     def forward(self, x):
-        return nn.LayerNorm(x, self.weights, dims=ndims, eps=1e-5) 
+        return nn.LayerNorm(x, self.weights, dims=ndim, eps=1e-5) 
 
 class LayerNorm2(nn.Module):
     # Affine is a type of layer where each input is connected to each output by a learnable weight (in other words, fully connected)
@@ -131,7 +131,7 @@ class Block(nn.Module):
 class GPTConfig:
     block_size: int = 1024
     vocab_size: int = 50304
-	# n_layer: int = 12
+    n_layer: int = 12
     n_head: int = 12    
     n_embd: int = 768
     dropout: float = 0.0
@@ -172,6 +172,7 @@ class GPT(nn.Module):
         assert config.vocab_size is not None
         assert config.block_size is not None
         self.config = config
+        print(self.config)
 
         self.wte = nn.Embedding(config.vocab_size, config.n_embd) # Word token embeddings, converts each token in the input sequence into a fixed-size vector.
         self.wpe = nn.Embedding(config.block_size, config.n_embd) # Word position embeddings, encodes the position of each token in the sequence 
@@ -236,68 +237,7 @@ class GPT(nn.Module):
 
         return idx
 
-    @classmethod # takes cls as the first input, allows calls to the class directly and return access this method without passing anything through? making it intrinsic to the class?
-    def from_pretrained(cls, model_type, override_args=None):
-        assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
-        override_args = override_args or {} # Default to empty dict
-
-        # Only dropout can be overridden, see notes below (i'm just copying karpathy's notes, maybe explain a little for myself)
-        assert all(k=='dropout' for k in override_args)
-        from transformers import GPT2LMHeadModel
-        print(f'Loading weights from pre-trained GPT: {model_type}')
-
-        # n_layer, n_head, and n_embd depends on model type
-        config_args = {
-                'gpt2': dict(n_layer=12, n_head=12, n_embd=768),
-                'gpt2-medium': dict(n_layer=24, n_head=16, n_embd=1024),
-                'gpt2-large': dict(n_layer=36, n_head=20, n_embd=1280),
-                'gpt2-xl': dict(n_layer=48, n_head=25, n_embd=1600),
-        }[model_type]
-        print("forcing vocab_size=50257, block_size=1024, bias=True")
-        config_args['vocab_size'] = 50257 # Always 50257 for GPT model checkpoints
-        config_args['block_size'] = 1024 # Always 1024
-        config_args['bias'] = True # Always True
-
-        if 'dropout' in override_args:
-            print(f'overriding dropout rate to {override_args["dropout"]}')
-            config_args['dropout'] = override_args['dropout']
-
-        # Create from scratch initialized miniGPT model
-        config = GPTConfig(**config_args)
-        model = GPT(config)
-        sd = model.state_dict()
-        sd_keys = sd.keys()
-        sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')] # discard this mask/buffer, not param
-
-        # init huggingface/transformers model
-        model_hf = GPTLMHeadModel.from_pretrained(model_type)
-        sd_hf = model_hf.state_dict()
-         
-        # copy while ensuring all the parameters are aligned and match in names and shapes
-        sd_keys_hf = sd_hf.keys()
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.masked_bias')] # ignore, just buffer
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('.attn.bias')] # same, just the mask (buffer)
-        transposed = ['attn.c_attn.weight', 'attn.c_proj.weight', 'mlp.c_fc.weight', 'mlp.c_proj.weight']
-        # basically the openai checkpoints use a conv1d module, but we only want to use a vanilla linear
-        # which means we have to transpose the weights when we import them
-        assert len(sd_keys_hf) == len(sd_keys), f'mismatched keys: {len(sd_keys_hf) != {len(sd_keys)}}'
-        for keys in sd_keys_hf:
-            if any(k.endswith(w) for w in transposed):
-                # special treatement for the conv1d weights we need to transpose
-                assert sd_hf[k].shape[::-1]
-
-            else:
-                assert sd_hf[k::].shape[::-1] == sd[k].shape
-                # same thing to copy params
-
-        return model
     
-    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
-        # Start with all the candidate parameters
-        param_dict = {pn: p for pn, p in self.named_parameters()} # this doesn't really work?
-
-
-
 
 def topk(x, k):
     flatten = mx.reshape(x, (-1,))

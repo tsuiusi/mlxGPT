@@ -1,5 +1,6 @@
 from model import GPTConfig, GPT
 
+import os
 import time
 import numpy as np
 import mlx
@@ -28,7 +29,7 @@ n_layer = 12
 dropout = 0.0
 
 # Data
-dataset = 'openwebtext'
+dataset = 'data'
 gradient_accumulation_steps = 5*8
 batch_size = 12
 block_size = 1024
@@ -48,6 +49,15 @@ lr_decay_iters = 600000
 min_lr = 6e-5
 
 # --- Data --------------------------------------------------------------------------------------------------------------"
+tokens_per_iter = gradient_accumulation_steps * batch_size * block_size
+print(f"Tokens per iteration will be: {tokens_per_iter}")
+
+# Take data loaded from Karpathy's Shakespeare prepare.py
+train_data = mx.array(np.memmap(os.path.join(dataset, 'train.bin'), dtype=np.uint16, mode='r'), dtype=mx.uint16)
+val_data = mx.array(np.memmap(os.path.join(dataset, 'val.bin'), dtype=np.uint16, mode='r'), dtype=mx.uint16)
+
+print(train_data[:10])
+print(val_data[:10])
 
 
 # --- Model  and Optimizer ----------------------------------------------------------------------------------------------"

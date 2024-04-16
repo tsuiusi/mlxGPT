@@ -1,9 +1,11 @@
 from model import GPTConfig, GPT
 
+import time
 import numpy as np
 import mlx
 import mlx.nn as nn
 import mlx.core as mx
+from mlx.optimizers import AdamW
 
 """
 1. Make model and initialize with weights
@@ -13,8 +15,8 @@ import mlx.core as mx
 5. Save model weights, train
 """
 
-MODEL = "~/rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.meta"
-WEIGHTS = "~rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.data-00000-of-00001"
+# MODEL = "~/rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.meta"
+# WEIGHTS = "~rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.data-00000-of-00001"
 
 # --- Hyperparameters --------------------------------------------------------------------------------------------------"
 # Model 
@@ -36,6 +38,8 @@ lr = 1e-4
 decay_lr = True
 weight_decay = 1e-1
 grad_clip = 1.0
+beta1 = 0.9
+beta2 = 0.95
 bias = False
 
 # Training loop details
@@ -43,9 +47,19 @@ warmup_iters = 2000
 lr_decay_iters = 600000
 min_lr = 6e-5
 
+# --- Data --------------------------------------------------------------------------------------------------------------"
 
-# --- Model -------------------------------------------------------------------------------------------------------------"
+
+# --- Model  and Optimizer ----------------------------------------------------------------------------------------------"
 model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=n_vocab, dropout=dropout)
 model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
 
-print(model)
+optimizer = AdamW(lr, (beta1, beta2), weight_decay=weight_decay)
+
+def loss_fn(model, X, y, sample_size):
+    pass
+
+def eval_fn(model, X, y, sample_size):
+    pass
+
+

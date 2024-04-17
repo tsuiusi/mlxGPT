@@ -55,19 +55,16 @@ print(f"Tokens per iteration will be: {tokens_per_iter}")
 # Take data loaded from Karpathy's Shakespeare prepare.py
 train_data = np.memmap(os.path.join(dataset, 'train.bin'), dtype=np.uint16, mode='r')
 val_data = np.memmap(os.path.join(dataset, 'val.bin'), dtype=np.uint16, mode='r')
-print(type(train_data))
 
 def get_batch(split):
     # Since the objective of a Transformer is to perform next-token prediction the target vector will be the input vector shifted by index 1
     data = train_data if split  == 'train' else val_data
-    ix = mx.random.randint(0, len(data) - block_size, (batch_size, )) # Picks <batch_size> integers from between (0, len(data) - block_size)
-    x = mx.stack([mx.array(data[i:i+block_size]).astype(mx.int64) for i in ix])
-    y = mx.stack([mx.array(data[i+1:i+block_size+1]).astype(mx.int64) for i in ix])
+    ix = mx.random.randint(low=0, high=len(data)-block_size, shape=(batch_size,))   
+    x = mx.stack([mx.array((data[i.item():i.item()+block_size]).astype(np.int64)) for i in ix]) # .item() because the datatype inside mx.random.randint is also mx.array and not like torch.tensor (which can be used in lists) so if I access the item it'll work
+    y = mx.stack([mx.array((data[i.item()+1:i.item()+block_size+1]).astype(np.int64)) for i in ix])
     # Karpathy does some CUDA-ing here 
+    
     return x, y
-
-X, y = get_batch('train')
-print(X[:10])
 
 # --- Model  and Optimizer ----------------------------------------------------------------------------------------------"
 model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=n_vocab, dropout=dropout)

@@ -8,6 +8,7 @@ import mlx.nn as nn
 import mlx.core as mx
 from mlx.optimizers import AdamW
 
+
 """
 1. Make model and initialize with weights
 2. Initialize optimizer and hyperparameters using optimizer (Adam) and mx.eval(model.parameters())
@@ -45,8 +46,11 @@ bias = False
 
 # Training loop details
 warmup_iters = 2000
+eval_interval = 2000
 lr_decay_iters = 600000
 min_lr = 6e-5
+iter_num = 0 
+best_val_loss = 1e9 # Big initial value 
 
 # --- Data --------------------------------------------------------------------------------------------------------------"
 tokens_per_iter = gradient_accumulation_steps * batch_size * block_size
@@ -72,10 +76,27 @@ model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
 
 optimizer = AdamW(lr, (beta1, beta2), weight_decay=weight_decay)
 
-def loss_fn(model, X, y, sample_size):
-    pass
+def loss_fn(model, X, y):
+    return mx.mean(nn.losses.cross_entropy(model(X), y)) 
 
-def eval_fn(model, X, y, sample_size):
-    pass
+loss_function = nn.value_and_grad(model, loss_fn)
 
+# --- Training loop -----------------------------------------------------------------------------------------------------"
+X, Y = get_batch('train') # First batch
+local_iter_num = 0
+no_epochs = 200 # putting this here for now
+
+for i in range(no_epochs):
+    tic = time.perf_counter()
+    print(type(GPT))
+    loss, grads = loss_function(model, X, Y)
+    optimizer.update(model, grads)
+    mx.eval(model.parameters(), optimizer.state)
+   
+    best_val_loss = max(loss.item(), best_val_loss)	
+    toc = time.perf_counter()
+    print(
+		f"Epoch {i}: | Best loss: {best_val_loss:.3f},"
+		f" Time {toc - tic:.3f} (s)"
+	)
 

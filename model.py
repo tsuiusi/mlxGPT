@@ -28,7 +28,7 @@ class LayerNorm2(nn.Module):
         self.eps = eps
         self.dims = dims
 
-    def forward(self, x):
+    def __call__(self, x):
         # in pytorch the mean and standard deviation (standard deviation = √var(x)) is calculated over the last D dimensions and D is the dimension of normalized_shape. 
         mean = mx.mean(x, axis=-1, keepdims=True)
         var = mx.var(x, axis=-1, keepdims=True)
@@ -62,9 +62,9 @@ class CausalSelfAttention(nn.Module):
         self.dropout = config.dropout
 
         # Flash attention: mechanism that optimizes self-attention calculation in transformer models, improves efficiency
-        # Was implemented in the original but not available in mlx yet, will add later
+        self.flash = True
 
-    def forward(self, x, mask, cache=None):
+    def __call__(self, x, cache=None):
         B, T, C = x.shape
         
         # query, key, value for all heads in batch and move head forward to be the batch dim
@@ -80,13 +80,15 @@ class CausalSelfAttention(nn.Module):
             v = mx.concatenate([past_value, v], axis=-2)
 
         # causal self-attention (see drive for notes)
-        # skip because we don't have flash
         # not sure if k.size is the right thing to put here
-        att = (q @ mx.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.shape(-1)))
-        mask = mx.reshape(mask, (1, 1, T, T))
-        att = mx.where(mask[:, :, :T, :T] == 0, att , float('-inf'))
-        att = mx.softmax(att, axis=-1)
-        att = self.attn_dropout(att)
+        # att = (q @ mx.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.shape(-1)))
+        # mask = mx.reshape(mask, (1, 1, T, T))
+        # att = mx.where(mask[:, :, :T, :T] == 0, att , float('-inf'))
+        # att = mx.softmax(att, axis=-1)
+        # att = self.attn_dropout(att)
+
+        # Because we have flash attention we use flash attention
+        y  = mx.fast.scaled_dot_product_attention(q=q, k=k, v=v, scale=(1.0 / sqrt(q.shape(-1))), mask=False) 
         y = (att @ v).transpose(0, 2, 1, 3).reshape(B,T,C) # reassemble all the head output side by side; this line is inconsistent with the transpose because i just copied karpathy
         # he used contiguous here which returns a tensor in the format memory likes, but no such thing in mlx so 0213 it is
 
@@ -105,7 +107,7 @@ class MLP(nn.Module):
         self.c_proj = nn.Linear(4*config.n_embd, config.n_embd, bias=config.bias)
         self.dropout = nn.Dropout(config.dropout) # probability
     
-    def forward(self, x):
+    def __call__(self, x):
         x = self.c_fc(x)
         x = self.gelu(x)
         x = self.c_proj(x)
@@ -121,8 +123,8 @@ class Block(nn.Module):
         self.ln2 = LayerNorm2(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
-    def forward(self, x, mask, cache=None):
-        x = x + self.attn(self.ln1(x), mask)
+    def __call__(self, x, cache=None):
+        x = x + self.attn(self.ln1(x))
         x = x + self.mlp(self.ln2(x))
 
         return x
@@ -188,8 +190,8 @@ class GPT(nn.Module):
         y = mx.random.categorical(y * (1/temp))
         return y
 
-    def forward(self, x, pos, targets=None):
-        b, t = x.size()
+    def __call__(self, x, targets=None):
+        b, t = x.shape
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
         pos = mx.arange(0, t, 1, dtype=x.dtype)
 

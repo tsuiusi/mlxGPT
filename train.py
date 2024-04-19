@@ -22,7 +22,7 @@ from mlx.optimizers import AdamW
 
 # --- Hyperparameters --------------------------------------------------------------------------------------------------"
 # Model 
-n_vocab = 50257
+vocab_size = 50257
 n_ctx = 1024 # context length
 n_embd = 768
 n_head = 12
@@ -71,7 +71,7 @@ def get_batch(split):
     return x, y
 
 # --- Model  and Optimizer ----------------------------------------------------------------------------------------------"
-model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=n_vocab, dropout=dropout)
+model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=vocab_size, dropout=dropout)
 model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
 
 optimizer = AdamW(lr, (beta1, beta2), weight_decay=weight_decay)
@@ -82,21 +82,17 @@ def loss_fn(model, X, y):
 loss_function = nn.value_and_grad(model, loss_fn)
 
 # --- Training loop -----------------------------------------------------------------------------------------------------"
-X, Y = get_batch('train') # First batch
+X, Y = get_batch('train') # First batch, can continuously sample because it's random sampling
 local_iter_num = 0
 no_epochs = 200 # putting this here for now
 
-for i in range(no_epochs):
+while True:
+
     tic = time.perf_counter()
-    print(type(GPT))
     loss, grads = loss_function(model, X, Y)
     optimizer.update(model, grads)
     mx.eval(model.parameters(), optimizer.state)
    
     best_val_loss = max(loss.item(), best_val_loss)	
     toc = time.perf_counter()
-    print(
-		f"Epoch {i}: | Best loss: {best_val_loss:.3f},"
-		f" Time {toc - tic:.3f} (s)"
-	)
 

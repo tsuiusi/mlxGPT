@@ -68,7 +68,7 @@ class CausalSelfAttention(nn.Module):
         B, T, C = x.shape
         
         # query, key, value for all heads in batch and move head forward to be the batch dim
-        q, k, v = mx.split(self.c_attn(x), self.n_embd, axis=2)
+        q, k, v = mx.split(self.c_attn(x), 3, axis=2) # Splits into 3x768 instead of 768x3
         k = mx.transpose(mx.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
         q = mx.transpose(mx.reshape(q, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
         v = mx.transpose(mx.reshape(v, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
@@ -88,8 +88,8 @@ class CausalSelfAttention(nn.Module):
         # att = self.attn_dropout(att)
 
         # Because we have flash attention we use flash attention
-        y  = mx.fast.scaled_dot_product_attention(q=q, k=k, v=v, scale=(1.0 / sqrt(q.shape(-1))), mask=False) 
-        y = (att @ v).transpose(0, 2, 1, 3).reshape(B,T,C) # reassemble all the head output side by side; this line is inconsistent with the transpose because i just copied karpathy
+        y  = mx.fast.scaled_dot_product_attention(q=q, k=k, v=v, scale=(1.0 / math.sqrt(q.shape[-1])), mask=None) 
+        y = y.transpose(0, 2, 1, 3).reshape(B,T,C) # reassemble all the head output side by side; this line is inconsistent with the transpose because i just copied karpathy
         # he used contiguous here which returns a tensor in the format memory likes, but no such thing in mlx so 0213 it is
 
         # resid_dropout randomly dropouts residual connections (connections to prev layers) 
@@ -174,13 +174,11 @@ class GPT(nn.Module):
         assert config.vocab_size is not None
         assert config.block_size is not None
         self.config = config
-        print(self.config)
-
         self.wte = nn.Embedding(config.vocab_size, config.n_embd) # Word token embeddings, converts each token in the input sequence into a fixed-size vector.
         self.wpe = nn.Embedding(config.block_size, config.n_embd) # Word position embeddings, encodes the position of each token in the sequence 
         # input representation = wte + wpe
         self.drop = nn.Dropout(config.dropout)
-        self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
+        self.ln_f = LayerNorm2(config.n_embd, bias=config.bias)
         self.transformer = [Block(config) for _ in range(config.n_layer)] # creates n no. blocks 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
 

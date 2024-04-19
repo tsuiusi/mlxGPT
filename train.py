@@ -77,7 +77,7 @@ model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
 optimizer = AdamW(lr, (beta1, beta2), weight_decay=weight_decay)
 
 def loss_fn(model, X, y):
-    return mx.mean(nn.losses.cross_entropy(model(X), y)) 
+    return mx.mean(nn.losses.cross_entropy(model(X)[0], y))
 
 loss_function = nn.value_and_grad(model, loss_fn)
 

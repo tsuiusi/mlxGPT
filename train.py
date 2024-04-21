@@ -52,6 +52,7 @@ min_lr = 6e-5
 iter_num = 0 
 best_val_loss = 1e9 # Big initial value 
 
+
 # --- Data --------------------------------------------------------------------------------------------------------------"
 tokens_per_iter = gradient_accumulation_steps * batch_size * block_size
 print(f"Tokens per iteration will be: {tokens_per_iter}")
@@ -70,6 +71,7 @@ def get_batch(split):
     
     return x, y
 
+
 # --- Model  and Optimizer ----------------------------------------------------------------------------------------------"
 model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=vocab_size, dropout=dropout)
 model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
@@ -81,13 +83,15 @@ def loss_fn(model, X, y):
 
 loss_function = nn.value_and_grad(model, loss_fn)
 
+
 # --- Training loop -----------------------------------------------------------------------------------------------------"
 X, Y = get_batch('train') # First batch, can continuously sample because it's random sampling
 local_iter_num = 0
 no_epochs = 200 # putting this here for now
 
-while True:
+# sample -> get loss, gradients -> optimizer to evaluate and update weights accordingly -> loop for n epochs
 
+for i in range(no_epochs):
     tic = time.perf_counter()
     loss, grads = loss_function(model, X, Y)
     optimizer.update(model, grads)
@@ -95,4 +99,17 @@ while True:
    
     best_val_loss = max(loss.item(), best_val_loss)	
     toc = time.perf_counter()
+    
+    if i % 50 == 0:
+        X, Y = get_batch('val')
+        # code for validation and calculating loss here
 
+    
+    X, Y = get_batch('train')
+
+"""
+To do:
+    1. Write the training loop
+    2. Save checkpoints
+    3. Graph losses
+"""

@@ -204,15 +204,16 @@ class GPT(nn.Module):
 
         x = self.ln_f(x)
         
-        if targets is not None:
-            logits = self.lm_head(x)
+        logits = self.lm_head(x)
+        # if targets is not None:
+            # logits = self.lm_head(x)
             # there might be something wrong here i'll have to experiment on this. i don't fully get mlx.core.reshape
-            loss = nn.losses.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
-        else:
-            logits = self.lm_head(x)
-            loss = None
+            # loss = nn.losses.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+        # else:
+            # logits = self.lm_head(x)
+            # loss = None
             
-        return logits, loss
+        return logits
 
     # let me think about this
     # What is the process of generation

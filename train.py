@@ -31,6 +31,7 @@ dropout = 0.0
 
 # Data
 dataset = 'data'
+out_dir = '~/code/mlxGPT/'
 gradient_accumulation_steps = 5*8
 batch_size = 12
 block_size = 1024
@@ -64,9 +65,10 @@ val_data = np.memmap(os.path.join(dataset, 'val.bin'), dtype=np.uint16, mode='r'
 def get_batch(split):
     # Since the objective of a Transformer is to perform next-token prediction the target vector will be the input vector shifted by index 1
     data = train_data if split  == 'train' else val_data
-    ix = mx.random.randint(low=0, high=len(data)-block_size, shape=(batch_size,))   
+    ix = mx.random.randint(low=0, high=len(data)-block_size, shape=(batch_size,)) # Get random indices within the acceptable range to sample from 
+
     x = mx.stack([mx.array((data[i.item():i.item()+block_size]).astype(np.int64)) for i in ix]) # .item() because the datatype inside mx.random.randint is also mx.array and not like torch.tensor (which can be used in lists) so if I access the item it'll work
-    y = mx.stack([mx.array((data[i.item()+1:i.item()+block_size+1]).astype(np.int64)) for i in ix])
+    y = mx.stack([mx.array((data[i.item()+1:i.item()+block_size+1]).astype(np.int64)) for i in ix]) # Next token prediction so it's shifted by 1
     # Karpathy does some CUDA-ing here 
     
     return x, y
@@ -96,8 +98,20 @@ for i in range(no_epochs):
     loss, grads = loss_function(model, X, Y)
     optimizer.update(model, grads)
     mx.eval(model.parameters(), optimizer.state)
-   
-    best_val_loss = max(loss.item(), best_val_loss)	
+  
+    if loss < best_loss_val:
+        best_val_loss = loss
+        checkpoint = {
+                'model': model.state_dict(), # Check the model parameters and etc
+                'optimizer': optimizer.state_dict(), # probably needs fixing too
+                'model_args': model_args,
+                'iter_num': iter_num,
+                'best_val_loss': best_val_loss,
+                'config': config
+        }
+        print(f'Saving checkpoint to {out_dir}')
+        mx.save_gguf('gpt2', checkpoint)
+
     toc = time.perf_counter()
     
     if i % 50 == 0:
@@ -110,6 +124,5 @@ for i in range(no_epochs):
 """
 To do:
     1. Write the training loop
-    2. Save checkpoints
     3. Graph losses
 """

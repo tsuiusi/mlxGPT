@@ -114,11 +114,6 @@ for i in range(no_epochs):
 
     toc = time.perf_counter()
     
-    if i % 50 == 0:
-        X, Y = get_batch('val')
-        # code for validation and calculating loss here
-
-    
     X, Y = get_batch('train')
 
 """

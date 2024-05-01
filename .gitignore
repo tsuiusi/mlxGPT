@@ -161,3 +161,4 @@ cython_debug/
 mlxgpt
 nanoGPT
 gpt-2
+gpt2.npz

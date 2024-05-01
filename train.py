@@ -90,7 +90,7 @@ loss_function = nn.value_and_grad(model, loss_fn)
 X, Y = get_batch('train') # First batch, can continuously sample because it's random sampling
 local_iter_num = 0
 no_epochs = 200 # putting this here for now
-
+best_val_loss = 1e9
 # sample -> get loss, gradients -> optimizer to evaluate and update weights accordingly -> loop for n epochs
 
 for i in range(no_epochs):
@@ -101,23 +101,10 @@ for i in range(no_epochs):
   
     if loss < best_loss_val:
         best_val_loss = loss
-        checkpoint = {
-                'model': model.state_dict(), # Check the model parameters and etc
-                'optimizer': optimizer.state_dict(), # probably needs fixing too
-                'model_args': model_args,
-                'iter_num': iter_num,
-                'best_val_loss': best_val_loss,
-                'config': config
-        }
         print(f'Saving checkpoint to {out_dir}')
-        mx.save_gguf('gpt2', checkpoint)
+        model.save_weights('gpt2.npz')
 
     toc = time.perf_counter()
-    
+    print(f'Epoch: {i} | {toc - tic} seconds')    
     X, Y = get_batch('train')
 
-"""
-To do:
-    1. Write the training loop
-    3. Graph losses
-"""

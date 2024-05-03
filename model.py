@@ -201,7 +201,6 @@ class GPT(nn.Module):
             logits = self.lm_head(x)
             # logits = self.lm_head(x[:, [-1], :])
             # loss = None
-            
         return logits
 
     # let me think about this

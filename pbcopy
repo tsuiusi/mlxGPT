@@ -1,0 +1,1 @@
+        k = mx.transpose(mx.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])

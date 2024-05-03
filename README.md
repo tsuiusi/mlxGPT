@@ -1,5 +1,6 @@
 # mlxGPT: Rewrite of Karpathy's NanoGPT in mlx
 
+> Rewrite everything from scratch so i have a working LM then GPT2, then rewrite nanoGPT.
 
 ## To do:
 * Find/gather a dataset to train

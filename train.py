@@ -45,7 +45,7 @@ beta2 = 0.95
 bias = False
 
 # Training loop details
-learning_rate = 1e-3
+learning_rate = 1e-4
 decay_lr = True
 weight_decay = 1e-1
 warmup_iters = 2000
@@ -57,7 +57,7 @@ best_val_loss = 1e9 # Big initial value
 
 
 # --- Data --------------------------------------------------------------------------------------------------------------"
-tokens_per_iter = gradient_accumulation_steps * batch_size * block_size
+tokens_per_iter = batch_size * block_size * gradient_accumulation_steps
 print(f"Tokens per iteration will be: {tokens_per_iter}")
 
 # Take data loaded from Karpathy's Shakespeare prepare.py
@@ -85,7 +85,7 @@ optimizer = AdamW(learning_rate, (beta1, beta2), weight_decay=weight_decay)
 
 def loss_fn(model, X, y):
     _, loss = model(X, y)
-    return mx.mean(loss)
+    return mx.mean(loss, axis=(-1, -2))
 
 loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
@@ -129,7 +129,7 @@ def step(X, y, gradient_accumulation_steps):
 
 def console_log(iter_num, loss, tic):
     toc = time.perf_counter()
-    print(f"Iteration: {iter_num:.3f} | Loss: {loss.item():.3f} | Time: {(toc - tic):.3f}")
+    print(f"Iteration: {iter_num} | Loss: {loss.item():.3f} | Time: {(toc - tic):.3f}")
 
     # Reuse as tic for next cycle
     return toc

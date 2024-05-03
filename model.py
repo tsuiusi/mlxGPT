@@ -194,15 +194,15 @@ class GPT(nn.Module):
 
         x = self.ln_f(x)
         
-        logits = self.lm_head(x)
         if targets is not None:
             logits = self.lm_head(x)
-            loss = nn.losses.cross_entropy(logits.reshape(-1, logits.shape[-1]), targets.reshape(-1))
+            # loss = nn.losses.cross_entropy(logits.reshape(-1, logits.shape[-1]), targets.reshape(-1))
         else:
-            logits = self.lm_head(x[:, [-1], :])
-            loss = None
+            logits = self.lm_head(x)
+            # logits = self.lm_head(x[:, [-1], :])
+            # loss = None
             
-        return logits, loss
+        return logits
 
     # let me think about this
     # What is the process of generation

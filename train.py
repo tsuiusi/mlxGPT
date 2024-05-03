@@ -84,8 +84,9 @@ mx.eval(model.parameters())
 optimizer = AdamW(learning_rate, (beta1, beta2), weight_decay=weight_decay)
 
 def loss_fn(model, X, y):
-    _, loss = model(X, y)
-    return mx.mean(loss, axis=(-1, -2))
+    logits = model(X)
+    loss = nn.losses.cross_entropy(logits, y) 
+    return mx.mean(loss)
 
 loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
@@ -126,6 +127,11 @@ def step(X, y, gradient_accumulation_steps):
 
     return loss
 
+def step2(X, y):
+    loss, grad = loss_and_grad_fn(model, X, y)
+    optimizer.update(model, grad)
+    return loss
+
 
 def console_log(iter_num, loss, tic):
     toc = time.perf_counter()
@@ -149,8 +155,8 @@ while True:
 #     lr = get_lr(iter_num) if decay_lr else learning_rate
 #     optimizer.set_learning_rate(lr)
     # loss = step(X, y, gradient_accumulation_steps)
-    loss, grad = loss_and_grad_fn(model, X, y)
-    optimizer.update(model, grad)
+    optimizer.learning_rate = get_lr(iter_num)
+    loss = step2(X, y)
     mx.eval(model.state, optimizer.state)
     X, y = get_batch('train')
 

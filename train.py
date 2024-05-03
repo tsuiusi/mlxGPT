@@ -45,9 +45,9 @@ beta2 = 0.95
 bias = False
 
 # Training loop details
-learning_rate = 1e-4
+learning_rate = 1e-3
 decay_lr = True
-weight_decay = 1e-1
+weight_decay = 1e-2
 warmup_iters = 2000
 eval_interval = 2000
 lr_decay_iters = 600000
@@ -79,6 +79,7 @@ def get_batch(split):
 # --- Model and Optimizer ----------------------------------------------------------------------------------------------"
 model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=vocab_size, dropout=dropout)
 model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
+mx.eval(model.parameters())
 
 optimizer = AdamW(learning_rate, (beta1, beta2), weight_decay=weight_decay)
 
@@ -107,11 +108,11 @@ def step(X, y, gradient_accumulation_steps):
     accumulated_grads = tree_map(lambda x: mx.zeros_like(x), model.parameters())
     accumulated_loss = 0.0
 
-    for micro_step in range(grad_accumulation_steps):
+    for micro_step in range(gradient_accumulation_steps):
         loss, grads = loss_and_grad_fn(model, X, y)
 
         # Scale gradients, add it to running sum
-        accumulated_grads = tree_map(lamda accumulated, new: accumulated + (new / gradient_accumulation_steps), accumulated_grads, grads,)
+        accumulated_grads = tree_map(lambda accumulated, new: accumulated + (new / gradient_accumulation_steps), accumulated_grads, grads,)
 
         # Evaluate gradients
         tree_map(lambda grad: mx.eval(grad), accumulated_grads,)
@@ -128,7 +129,7 @@ def step(X, y, gradient_accumulation_steps):
 
 def console_log(iter_num, loss, tic):
     toc = time.perf_counter()
-    print(f"Iteration: {iter_num:.3f} | Loss: {loss:.3f} | Time: {(toc - tic):.3f}")
+    print(f"Iteration: {iter_num:.3f} | Loss: {loss.item():.3f} | Time: {(toc - tic):.3f}")
 
     # Reuse as tic for next cycle
     return toc
@@ -142,24 +143,27 @@ save_interval = 10
 X, y = get_batch('train')
 tic = time.perf_counter()
 
+print('Starting training...')
 
 while True: 
 #     lr = get_lr(iter_num) if decay_lr else learning_rate
 #     optimizer.set_learning_rate(lr)
-    loss = step(X, y, gradient_accumulation_steps)
-    mx.eval(model.parameters(), optimizer.state)
+    # loss = step(X, y, gradient_accumulation_steps)
+    loss, grad = loss_and_grad_fn(model, X, y)
+    optimizer.update(model, grad)
+    mx.eval(model.state, optimizer.state)
     X, y = get_batch('train')
 
     # Logging
     tic = console_log(iter_num, loss, tic)
 
     # Periodic saving
-    if iter_num % save_interval == 0:
+    if iter_num % save_interval == 0 and iter_num != 0:
         valX, valY = get_batch('val')
         val_loss = loss_fn(model, valX, valY)
 
         best_val_loss = min(best_val_loss, val_loss.item())
-        print(f'Current loss: {best_val_loss.item()}')
+        print(f'Current loss: {best_val_loss}')
 
         model.save_weights('gpt2.npz')
 

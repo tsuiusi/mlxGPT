@@ -38,14 +38,6 @@ gradient_accumulation_steps = 5*8
 batch_size = 12
 block_size = 1024
 
-# Learning Rate
-learning_rate = 1e-4
-decay_lr = True
-weight_decay = 1e-1
-warmup_iters = 2000
-min_lr = 6e-5
-lr_decay_iters = 600000
-
 # Optimzer
 grad_clip = 1.0
 beta1 = 0.9
@@ -53,6 +45,9 @@ beta2 = 0.95
 bias = False
 
 # Training loop details
+learning_rate = 1e-4
+decay_lr = True
+weight_decay = 1e-1
 warmup_iters = 2000
 eval_interval = 2000
 lr_decay_iters = 600000
@@ -140,14 +135,13 @@ def console_log(iter_num, loss, tic):
 
 # --- Training loop -----------------------------------------------------------------------------------------------------"
 local_iter_num = 0
-iter_num = 0
 no_iters = 200 # putting this here for now
 save_interval = 10
-best_val_loss = 1e9
-# sample -> get loss, gradients -> optimizer to evaluate and update weights accordingly -> loop for n epochs
+
 
 X, y = get_batch('train')
 tic = time.perf_counter()
+
 
 while True: 
 #     lr = get_lr(iter_num) if decay_lr else learning_rate
@@ -161,8 +155,12 @@ while True:
 
     # Periodic saving
     if iter_num % save_interval == 0:
+        valX, valY = get_batch('val')
+        val_loss = loss_fn(model, valX, valY)
 
+        best_val_loss = min(best_val_loss, val_loss.item())
         print(f'Current loss: {best_val_loss.item()}')
+
         model.save_weights('gpt2.npz')
 
     iter_num += 1

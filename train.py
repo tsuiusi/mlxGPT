@@ -6,7 +6,9 @@ import numpy as np
 import mlx
 import mlx.nn as nn
 import mlx.core as mx
+import mlx.optimizers as optim
 from mlx.optimizers import AdamW
+from mlx.utils import tree_flatten, tree_map
 
 
 """
@@ -36,10 +38,15 @@ gradient_accumulation_steps = 5*8
 batch_size = 12
 block_size = 1024
 
-# Optimizer
-lr = 1e-4
+# Learning Rate
+learning_rate = 1e-4
 decay_lr = True
 weight_decay = 1e-1
+warmup_iters = 2000
+min_lr = 6e-5
+lr_decay_iters = 600000
+
+# Optimzer
 grad_clip = 1.0
 beta1 = 0.9
 beta2 = 0.95
@@ -74,37 +81,76 @@ def get_batch(split):
     return x, y
 
 
-# --- Model  and Optimizer ----------------------------------------------------------------------------------------------"
+# --- Model and Optimizer ----------------------------------------------------------------------------------------------"
 model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=vocab_size, dropout=dropout)
 model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
 
-optimizer = AdamW(lr, (beta1, beta2), weight_decay=weight_decay)
+optimizer = AdamW(learning_rate, (beta1, beta2), weight_decay=weight_decay)
 
 def loss_fn(model, X, y):
-    return mx.mean(nn.losses.cross_entropy(model(X), y))
+    logits, loss = model(X, y)
+    return mx.mean(loss)
 
-loss_function = nn.value_and_grad(model, loss_fn)
+loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
+def get_lr(it):
+    if it < warmup_iters:
+        return learning_rate * it / warmup_iters
+
+    if it > lr_decay_iters:
+        return min_lr
+
+    decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
+    assert 0 <= decay_ratio <= 1
+    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
+    
+    return min_lr + coeff * (learning_rate - min_lr)
+
+def console_log(optimizer, iter_num, loss, tic):
+    toc = time.perf_counter()
+    print(f"Iteration: {iter_num:.3f} | Loss: {loss:.3f} | Learning Rate: {optimizer.learning_rate.item():.5f} | Time: {(toc - tic):.3f}")
 
 # --- Training loop -----------------------------------------------------------------------------------------------------"
-X, Y = get_batch('train') # First batch, can continuously sample because it's random sampling
 local_iter_num = 0
-no_epochs = 5 # putting this here for now
+no_iters = 5 # putting this here for now
+save_interval = 2
 best_val_loss = 1e9
 # sample -> get loss, gradients -> optimizer to evaluate and update weights accordingly -> loop for n epochs
 
-for i in range(no_epochs):
-#     tic = time.perf_counter()
-    loss, grads = loss_function(model, X, Y)
+X, y = get_batch('train')
+
+while True: 
+#     lr = get_lr(iter_num) if decay_lr else learning_rate
+#     optimizer.set_learning_rate(lr)
+
+    loss, grads = loss_and_grad_fn(model, X, y)
     optimizer.update(model, grads)
     mx.eval(model.parameters(), optimizer.state)
-  
-    if loss < best_val_loss:
-        best_val_loss = loss
+
+
+    # for micro_step in range(gradient_accumulation_steps):
+        # logits, loss = model(X, y)
+        # loss = loss / gradient_accumulation_steps 
+ 
+    # Loss update
+    best_val_loss = min(best_val_loss, loss)
+
+    # Periodic saving
+    if iter_num % save_interval == 0:
         print(f'Current loss: {best_val_loss.item()}')
         model.save_weights('gpt2.npz')
 
-#     toc = time.perf_counter()
-    print(f'Epoch: {i} | {toc - tic} seconds')    
-    X, Y = get_batch('train')
+    iter_num += 1
+    local_iter_num += 1
 
+    if iter_num > no_iters:
+        break
+
+
+"""
+Todo:
+    2. tokenizer? decoding?
+    3. gradient accumulation
+    4. print loss and iteration (efficiently)
+    5. inference
+"""

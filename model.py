@@ -6,16 +6,6 @@ import mlx.nn as nn
 import mlx.core as mx
 
 class LayerNorm(nn.Module):
-    def __init__(self, ndim, bias):
-        super().__init__()
-        # I don't think I need to initialize the weights and biases because lazy eval
-        self.weights = mx.ones((ndim, ))
-        self.bias = mx.ones((ndim, )) if bias else None
-
-    def forward(self, x):
-        return nn.LayerNorm(x, self.weights, dims=ndim, eps=1e-5) 
-
-class LayerNorm2(nn.Module):
     # Affine is a type of layer where each input is connected to each output by a learnable weight (in other words, fully connected)
     # eps is epsilon, the tolerance for how close the solution needs to be to 0 before it's considered (?)
     def __init__(self, dims: int, eps: float = 1e-5, affine: bool = True, bias: bool = False):
@@ -118,9 +108,9 @@ class MLP(nn.Module):
 class Block(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.ln1 = LayerNorm2(config.n_embd, bias=config.bias)
+        self.ln1 = LayerNorm(config.n_embd, bias=config.bias)
         self.attn = CausalSelfAttention(config)
-        self.ln2 = LayerNorm2(config.n_embd, bias=config.bias)
+        self.ln2 = LayerNorm(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
     def __call__(self, x, cache=None):
@@ -178,7 +168,7 @@ class GPT(nn.Module):
         self.wpe = nn.Embedding(config.block_size, config.n_embd) # Word position embeddings, encodes the position of each token in the sequence 
         # input representation = wte + wpe
         self.drop = nn.Dropout(config.dropout)
-        self.ln_f = LayerNorm2(config.n_embd, bias=config.bias)
+        self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
         self.transformer = [Block(config) for _ in range(config.n_layer)] # creates n no. blocks 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
 
@@ -205,15 +195,14 @@ class GPT(nn.Module):
         x = self.ln_f(x)
         
         logits = self.lm_head(x)
-        # if targets is not None:
-            # logits = self.lm_head(x)
-            # there might be something wrong here i'll have to experiment on this. i don't fully get mlx.core.reshape
-            # loss = nn.losses.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
-        # else:
-            # logits = self.lm_head(x)
-            # loss = None
+        if targets is not None:
+            logits = self.lm_head(x)
+            loss = nn.losses.cross_entropy(logits, targets)
+        else:
+            logits = self.lm_head(x[:, [-1], :])
+            loss = None
             
-        return logits
+        return logits, loss
 
     # let me think about this
     # What is the process of generation

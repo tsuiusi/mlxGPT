@@ -93,6 +93,7 @@ def loss_fn(model, X, y):
 
 loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
+
 def get_lr(it):
     if it < warmup_iters:
         return learning_rate * it / warmup_iters
@@ -106,37 +107,61 @@ def get_lr(it):
     
     return min_lr + coeff * (learning_rate - min_lr)
 
-def console_log(optimizer, iter_num, loss, tic):
+
+def step(X, y, gradient_accumulation_steps):
+    accumulated_grads = tree_map(lambda x: mx.zeros_like(x), model.parameters())
+    accumulated_loss = 0.0
+
+    for micro_step in range(grad_accumulation_steps):
+        loss, grads = loss_and_grad_fn(model, X, y)
+
+        # Scale gradients, add it to running sum
+        accumulated_grads = tree_map(lamda accumulated, new: accumulated + (new / gradient_accumulation_steps), accumulated_grads, grads,)
+
+        # Evaluate gradients
+        tree_map(lambda grad: mx.eval(grad), accumulated_grads,)
+        
+        # Accumulate loss
+        accumulated_loss += loss.item()
+    
+    # Average loss
+    loss = mx.array(accumlated_loss / gradient_accumulation_steps)
+    optimizer.update(model, accumulated_grads)
+
+    return loss
+
+
+def console_log(iter_num, loss, tic):
     toc = time.perf_counter()
-    print(f"Iteration: {iter_num:.3f} | Loss: {loss:.3f} | Learning Rate: {optimizer.learning_rate.item():.5f} | Time: {(toc - tic):.3f}")
+    print(f"Iteration: {iter_num:.3f} | Loss: {loss:.3f} | Time: {(toc - tic):.3f}")
+
+    # Reuse as tic for next cycle
+    return toc
 
 # --- Training loop -----------------------------------------------------------------------------------------------------"
 local_iter_num = 0
-no_iters = 5 # putting this here for now
-save_interval = 2
+iter_num = 0
+no_iters = 200 # putting this here for now
+save_interval = 10
 best_val_loss = 1e9
 # sample -> get loss, gradients -> optimizer to evaluate and update weights accordingly -> loop for n epochs
 
 X, y = get_batch('train')
+tic = time.perf_counter()
 
 while True: 
 #     lr = get_lr(iter_num) if decay_lr else learning_rate
 #     optimizer.set_learning_rate(lr)
-
-    loss, grads = loss_and_grad_fn(model, X, y)
-    optimizer.update(model, grads)
+    loss = step(X, y, gradient_accumulation_steps)
     mx.eval(model.parameters(), optimizer.state)
+    X, y = get_batch('train')
 
-
-    # for micro_step in range(gradient_accumulation_steps):
-        # logits, loss = model(X, y)
-        # loss = loss / gradient_accumulation_steps 
- 
-    # Loss update
-    best_val_loss = min(best_val_loss, loss)
+    # Logging
+    tic = console_log(iter_num, loss, tic)
 
     # Periodic saving
     if iter_num % save_interval == 0:
+
         print(f'Current loss: {best_val_loss.item()}')
         model.save_weights('gpt2.npz')
 
@@ -149,8 +174,8 @@ while True:
 
 """
 Todo:
+    1. Write eval + get validation loss (i only have training loss so far)
     2. tokenizer? decoding?
     3. gradient accumulation
-    4. print loss and iteration (efficiently)
     5. inference
 """

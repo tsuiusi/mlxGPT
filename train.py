@@ -47,12 +47,12 @@ bias = False
 # Training loop details
 learning_rate = 1e-3
 decay_lr = True
-weight_decay = 1e-2
+weight_decay = 1e-1
 warmup_iters = 2000
 eval_interval = 2000
 lr_decay_iters = 600000
 min_lr = 6e-5
-iter_num = 0 
+iter_num = 1 
 best_val_loss = 1e9 # Big initial value 
 
 
@@ -84,7 +84,7 @@ mx.eval(model.parameters())
 optimizer = AdamW(learning_rate, (beta1, beta2), weight_decay=weight_decay)
 
 def loss_fn(model, X, y):
-    logits, loss = model(X, y)
+    _, loss = model(X, y)
     return mx.mean(loss)
 
 loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
@@ -135,7 +135,7 @@ def console_log(iter_num, loss, tic):
     return toc
 
 # --- Training loop -----------------------------------------------------------------------------------------------------"
-local_iter_num = 0
+local_iter_num = 1
 no_iters = 200 # putting this here for now
 save_interval = 10
 
@@ -158,7 +158,7 @@ while True:
     tic = console_log(iter_num, loss, tic)
 
     # Periodic saving
-    if iter_num % save_interval == 0 and iter_num != 0:
+    if iter_num % save_interval == 0:
         valX, valY = get_batch('val')
         val_loss = loss_fn(model, valX, valY)
 

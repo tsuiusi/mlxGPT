@@ -35,55 +35,33 @@ class LayerNorm(nn.Module):
 class CausalSelfAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
-        assert config.n_embd % config.n_head == 0
-        # K Q V for all heads in a batch
-        # nn.Linear only defines the input dim, output dim, and bias
-        # 3 because it's then split into Q K V
+        assert config.n_embd % config.num_heads == 0
         self.c_attn = nn.Linear(config.n_embd, 3* config.n_embd, bias=config.bias)
 
-        # output projection
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
-        # Regularization
         # Used to prevent overfitting, random neurons are dropped out to ensure the network learns redundant connections (more than one way to the answer) 
         self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
-        self.n_head = config.n_head
+        self.num_heads = config.num_heads
         self.n_embd = config.n_embd
         self.dropout = config.dropout
 
         # Flash attention: mechanism that optimizes self-attention calculation in transformer models, improves efficiency
         self.flash = True
 
-    def __call__(self, x, cache=None):
+    def __call__(self, x):
         B, T, C = x.shape
         
         # query, key, value for all heads in batch and move head forward to be the batch dim
         q, k, v = mx.split(self.c_attn(x), 3, axis=2) # Splits into 3x768 instead of 768x3
-        k = mx.transpose(mx.reshape(k, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
-        q = mx.transpose(mx.reshape(q, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
-        v = mx.transpose(mx.reshape(v, [B, T, self.n_head, C // self.n_head]), axes=[0, 2, 1, 3])
+        k = mx.transpose(mx.reshape(k, [B, T, self.num_heads, C // self.num_heads]), axes=[0, 2, 1, 3])
+        q = mx.transpose(mx.reshape(q, [B, T, self.num_heads, C // self.num_heads]), axes=[0, 2, 1, 3])
+        v = mx.transpose(mx.reshape(v, [B, T, self.num_heads, C // self.num_heads]), axes=[0, 2, 1, 3])
 
-        if cache is not None:
-            past_key = cache[0]
-            past_value = cache[1]
-            k = mx.concatenate([past_key, k], axis=-2)
-            v = mx.concatenate([past_value, v], axis=-2)
-
-        # causal self-attention (see drive for notes)
-        # not sure if k.size is the right thing to put here
-        # att = (q @ mx.transpose(k, [-2, -1])) * (1.0 / math.sqrt(k.shape(-1)))
-        # mask = mx.reshape(mask, (1, 1, T, T))
-        # att = mx.where(mask[:, :, :T, :T] == 0, att , float('-inf'))
-        # att = mx.softmax(att, axis=-1)
-        # att = self.attn_dropout(att)
-
-        # Because we have flash attention we use flash attention
         y  = mx.fast.scaled_dot_product_attention(q=q, k=k, v=v, scale=(1.0 / math.sqrt(q.shape[-1])), mask=None) 
         y = y.transpose(0, 2, 1, 3).reshape(B,T,C) # reassemble all the head output side by side; this line is inconsistent with the transpose because i just copied karpathy
         # he used contiguous here which returns a tensor in the format memory likes, but no such thing in mlx so 0213 it is
 
-        # resid_dropout randomly dropouts residual connections (connections to prev layers) 
-        # c_proj is a linear transformation (projection) applied to the output, which either changes the dimension or prepares layers or something like that.
         y = self.resid_dropout(self.c_proj(y))
 
         return y
@@ -108,9 +86,10 @@ class MLP(nn.Module):
 class Block(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.ln1 = LayerNorm(config.n_embd, bias=config.bias)
+        self.ln1 = nn.LayerNorm(config.n_embd, bias=config.bias)
         self.attn = CausalSelfAttention(config)
-        self.ln2 = LayerNorm(config.n_embd, bias=config.bias)
+        # self.attn = nn.MultiHeadAttention(dims=config.n_embd, num_heads=config.num_heads)
+        self.ln2 = nn.LayerNorm(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
     def __call__(self, x, cache=None):
@@ -124,7 +103,7 @@ class GPTConfig:
     block_size: int = 1024
     vocab_size: int = 50304
     n_layer: int = 12
-    n_head: int = 12    
+    num_heads: int = 12    
     n_embd: int = 768
     dropout: float = 0.0
     bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster	
@@ -168,7 +147,7 @@ class GPT(nn.Module):
         self.wpe = nn.Embedding(config.block_size, config.n_embd) # Word position embeddings, encodes the position of each token in the sequence 
         # input representation = wte + wpe
         self.drop = nn.Dropout(config.dropout)
-        self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
+        self.ln_f = nn.LayerNorm(config.n_embd, bias=config.bias)
         self.transformer = [Block(config) for _ in range(config.n_layer)] # creates n no. blocks 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False) # takes the no. embeddings as input, outputs tensor of size vocab_size to be one-hotted 
 

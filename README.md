@@ -2,6 +2,9 @@
 
 > Rewrite everything from scratch so i have a working LM then GPT2, then rewrite nanoGPT.
 
+(12, 1024, 50247) -> (12, 1024, 50247) (12, 1024, 50247) (12, 1024, 50247) -> 
+
+
 ## To do:
 * Find/gather a dataset to train
     * Tokenizer
@@ -10,19 +13,6 @@
     * Format to download and extract the data
 * Save and load model weights (GPT-2?)
     * Getting the model weights; loading them
-
-What do I need:
-* Optimizer
-* Eval functions (loss, accuracy, evaluation)
-* Training loop
-* Saving my weights
-* Hyperparameters for GPT2
-* Model 
-
----
-## Devlog
-### 9th Feb
-* I don't need infinity for the mask, a sufficiently negative number will suffice
 
 ---
 ## Notes of the rewrite

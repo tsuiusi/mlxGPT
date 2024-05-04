@@ -27,7 +27,7 @@ from mlx.utils import tree_flatten, tree_map
 vocab_size = 50257
 n_ctx = 1024 # context length
 n_embd = 768
-n_head = 12
+num_heads = 12
 n_layer = 12
 dropout = 0.0
 
@@ -77,11 +77,12 @@ def get_batch(split):
 
 
 # --- Model and Optimizer ----------------------------------------------------------------------------------------------"
-model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=vocab_size, dropout=dropout)
+model_args = dict(n_layer=n_layer, num_heads=num_heads, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=vocab_size, dropout=dropout)
 model = GPT(GPTConfig(**model_args)) # ** passes the dictionary into config
 mx.eval(model.parameters())
 
 optimizer = AdamW(learning_rate, (beta1, beta2), weight_decay=weight_decay)
+mx.eval(optimizer.state)
 
 def loss_fn(model, X, y):
     logits = model(X)
@@ -135,18 +136,17 @@ def step2(X, y):
 
 def console_log(iter_num, loss, tic):
     toc = time.perf_counter()
-    print(f"Iteration: {iter_num} | Loss: {loss.item():.3f} | Time: {(toc - tic):.3f}")
+    print(f"Iteration: {iter_num} | Loss: {loss.item():.3f} | Learning Rate: {optimizer.learning_rate.item():.3f} | Time: {(toc - tic):.3f}")
 
     # Reuse as tic for next cycle
     return toc
 
 # --- Training loop -----------------------------------------------------------------------------------------------------"
-local_iter_num = 1
-no_iters = 200 # putting this here for now
+no_iters = 2 # putting this here for now
 save_interval = 10
 
-
 X, y = get_batch('train')
+print(X[0][0])
 tic = time.perf_counter()
 
 print('Starting training...')
@@ -157,7 +157,7 @@ while True:
     # loss = step(X, y, gradient_accumulation_steps)
     optimizer.learning_rate = get_lr(iter_num)
     loss = step2(X, y)
-    mx.eval(model.state, optimizer.state)
+    mx.eval([model.state, optimizer.state])
     X, y = get_batch('train')
 
     # Logging

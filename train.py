@@ -32,7 +32,7 @@ n_layer = 12
 dropout = 0.0
 
 # Data
-dataset = 'data'
+dataset = 'shakespeare'
 out_dir = '~/code/mlxGPT/'
 gradient_accumulation_steps = 5*8
 batch_size = 12
@@ -86,6 +86,7 @@ mx.eval(optimizer.state)
 
 def loss_fn(model, X, y):
     logits = model(X)
+    -
     loss = nn.losses.cross_entropy(logits, y) 
     return mx.mean(loss)
 
@@ -174,7 +175,6 @@ while True:
         model.save_weights('gpt2.npz')
 
     iter_num += 1
-    local_iter_num += 1
 
     if iter_num > no_iters:
         break

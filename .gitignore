@@ -163,3 +163,5 @@ nanoGPT
 gpt-2
 gpt2.npz
 nanoGPT_mlx
+shakespeare
+openwebtext

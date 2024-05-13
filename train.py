@@ -2,6 +2,7 @@ from model import GPTConfig, GPT
 
 import os
 import time
+import sys
 import numpy as np
 import mlx
 import mlx.nn as nn
@@ -21,6 +22,10 @@ from mlx.utils import tree_flatten, tree_map
 
 # MODEL = "~/rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.meta"
 # WEIGHTS = "~rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.data-00000-of-00001"
+def get_dataset():
+    if sys.argv[1] and (sys.argv[1] == 'shakespeare' or sys.argv[1] == 'openwebtext'):
+        return sys.argv[1]
+    return 'shakespeare'
 
 # --- Hyperparameters --------------------------------------------------------------------------------------------------"
 # Model 
@@ -32,7 +37,7 @@ n_layer = 12
 dropout = 0.0
 
 # Data
-dataset = 'shakespeare'
+dataset = get_dataset()
 out_dir = '~/code/mlxGPT/'
 gradient_accumulation_steps = 5*8
 batch_size = 12
@@ -75,6 +80,16 @@ def get_batch(split):
     
     return x, y
 
+def batch_iterate(split):
+    """
+    what mnist does is for a range in 0 to y.size, pick batch_size no. samples and takes their ids
+    resnet does a similar thing, takes a random list of indices and yields them when done
+    what get_batch does is get batch_size no. sequences from the data and returns them every time
+
+    write a version that yields the data instead?
+    """
+    data = train_data if split == 'train' else val_data
+
 
 # --- Model and Optimizer ----------------------------------------------------------------------------------------------"
 model_args = dict(n_layer=n_layer, num_heads=num_heads, n_embd=n_embd, block_size=block_size, bias=bias, vocab_size=vocab_size, dropout=dropout)
@@ -84,11 +99,14 @@ mx.eval(model.parameters())
 optimizer = AdamW(learning_rate, (beta1, beta2), weight_decay=weight_decay)
 mx.eval(optimizer.state)
 
+
 def loss_fn(model, X, y):
     logits = model(X)
-    -
     loss = nn.losses.cross_entropy(logits, y) 
     return mx.mean(loss)
+
+def eval_fn(model, X, y):
+    return mx.mean(mx.argmax(model(X), axis=1) == y)
 
 loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
@@ -143,11 +161,10 @@ def console_log(iter_num, loss, tic):
     return toc
 
 # --- Training loop -----------------------------------------------------------------------------------------------------"
-no_iters = 2 # putting this here for now
+no_iters = 10 # putting this here for now
 save_interval = 10
 
 X, y = get_batch('train')
-print(X[0][0])
 tic = time.perf_counter()
 
 print('Starting training...')

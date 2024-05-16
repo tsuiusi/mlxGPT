@@ -160,6 +160,9 @@ def console_log(iter_num, loss, tic):
     # Reuse as tic for next cycle
     return toc
 
+def eval_fn(model, X, y):
+    return mx.mean(mx.argmax(model(X)) == y)
+
 # --- Training loop -----------------------------------------------------------------------------------------------------"
 no_iters = 10 # putting this here for now
 save_interval = 10

@@ -23,9 +23,11 @@ from mlx.utils import tree_flatten, tree_map
 # MODEL = "~/rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.meta"
 # WEIGHTS = "~rtty/code/mlxGPT/gpt-2/models/124M/model.ckpt.data-00000-of-00001"
 def get_dataset():
-    if sys.argv[1] and (sys.argv[1] == 'shakespeare' or sys.argv[1] == 'openwebtext'):
-        return sys.argv[1]
-    return 'shakespeare'
+    try:
+        if sys.argv[1] and (sys.argv[1] == 'shakespeare' or sys.argv[1] == 'openwebtext'):
+            return sys.argv[1]
+    except:
+        return 'shakespeare'
 
 # --- Hyperparameters --------------------------------------------------------------------------------------------------"
 # Model 
@@ -50,7 +52,7 @@ beta2 = 0.95
 bias = False
 
 # Training loop details
-learning_rate = 1e-4
+learning_rate = 6e-4
 decay_lr = True
 weight_decay = 1e-1
 warmup_iters = 2000
@@ -63,6 +65,8 @@ best_val_loss = 1e9 # Big initial value
 
 # --- Data --------------------------------------------------------------------------------------------------------------"
 tokens_per_iter = batch_size * block_size * gradient_accumulation_steps
+
+print(f"Using dataset {dataset}")
 print(f"Tokens per iteration will be: {tokens_per_iter}")
 
 # Take data loaded from Karpathy's Shakespeare prepare.py
@@ -106,7 +110,7 @@ def loss_fn(model, X, y):
     return mx.mean(loss)
 
 def eval_fn(model, X, y):
-    return mx.mean(mx.argmax(model(X), axis=1) == y)
+    return mx.mean(mx.argmax(model(X), axis=1) == mx.argmax(y, axis=1))
 
 loss_and_grad_fn = nn.value_and_grad(model, loss_fn)
 
@@ -155,16 +159,13 @@ def step2(X, y):
 
 def console_log(iter_num, loss, tic):
     toc = time.perf_counter()
-    print(f"Iteration: {iter_num} | Loss: {loss.item():.3f} | Learning Rate: {optimizer.learning_rate.item():.3f} | Time: {(toc - tic):.3f}")
+    print(f"Iteration: {iter_num} | Loss: {loss.item():.5f} | Learning Rate: {optimizer.learning_rate.item():.3f} | Time: {(toc - tic):.3f}")
 
     # Reuse as tic for next cycle
     return toc
 
-def eval_fn(model, X, y):
-    return mx.mean(mx.argmax(model(X)) == y)
-
 # --- Training loop -----------------------------------------------------------------------------------------------------"
-no_iters = 10 # putting this here for now
+no_iters = 200 # putting this here for now
 save_interval = 10
 
 X, y = get_batch('train')
@@ -188,6 +189,8 @@ while True:
     if iter_num % save_interval == 0:
         valX, valY = get_batch('val')
         val_loss = loss_fn(model, valX, valY)
+
+        # accuracy = eval_fn(model, valX, valY)
 
         best_val_loss = min(best_val_loss, val_loss.item())
         print(f'Current loss: {best_val_loss}')

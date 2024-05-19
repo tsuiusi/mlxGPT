@@ -49,4 +49,49 @@ class CausalSelfAttention(nn.Module):
         return y
 
 class MLP(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.c_fc = nn.Linear(config.n_embd, 4 * config.n_embd, bias=config.bias)
+        self.gelu = nn.GELU()
+        self.c_proj = nn.Linear(4 * config.n_embd, config.n_embd, bias=config.bias)
+        self.dropout = nn.Dropout(config.dropout)
 
+    def __call__(self, x):
+        x = self.c_fc(x)
+        x = self.gelu(x)
+        x = self.c_proj(x)
+        x = self.dropout(x)
+
+        return x
+
+class Block(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.ln_1 = LayerNorm(config.n_embd, bias-config.bias)
+        self.attn = CausalSelfAttention(config)
+        self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
+        self.mlp = MLP(config)
+
+    def __call__(self, x):
+        x = x + self.attn(self.ln_1(x))
+        x = x + self.mlp(self.ln_2(x))
+        return x
+
+@dataclass
+class GPTConfig:
+    block_size: int = 1024
+    vocab_size: int = 50304 # GPT-2 vocab_size of 50257, padded up to nearest multiple of 64 for efficiency
+    n_layer: int = 12
+    n_head: int = 12
+    n_embd: int = 768
+    dropout: float = 0.0
+    bias: bool = True # True: bias in Linears and LayerNorms, like GPT-2. False: a bit better and faster
+
+class GPT(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        assert config.vocab_size is not None
+        assert config.block_size is not None
+        self.config = config
+        
+        self.transformer = 

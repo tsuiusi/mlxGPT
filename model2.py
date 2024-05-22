@@ -1,8 +1,10 @@
 import math
+from dataclasses import dataclass
 
 import mlx
 import mlx.nn as nn
 import mlx.core as mx
+from mlx.utils import tree_flatten
 
 class LayerNorm(nn.Module):
     def __init__(self, ndim, bias):
@@ -23,7 +25,7 @@ class CausalSelfAttention(nn.Module):
         # output projection
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
        	# regularization
-		self.attn_dropout = nn.Dropout(config.dropout)
+        self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
         self.n_head = config.n_head
         self.n_embd = config.n_embd
@@ -101,9 +103,20 @@ class GPT(nn.Module):
         self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        # skip weight initialization because we're using mlx :)
 
-		# with weight tying when using torch.compile() some warnings get generated:
-        # "UserWarning: functional_call was passed multiple values for tied weights.
-        # This behavior is deprecated and will be an error in future versions"
-        # not 100% sure what this is, so far seems to be harmless. TODO investigate
-		self.wte.weight = self.lm_head.weight
+        print("number of parameters: %.2fM" % (self.get_num_params()/1e6,))
+
+    def get_num_params(self, non_embedding=True):
+        """
+        Return the number of parameters in the model.
+        For non-embedding count (default), the position embeddings get subtracted.
+        The token embeddings would too, except due to the parameter sharing these
+		params are actually used as weights in the final layer, so we include them.
+		"""
+        n_params = sum(p.size for _, p in [tree_flatten(self.transformer.parameters(), tree_flatten(self.ln_f.parameters()), tree_flatten(self.lm_head.parameters()))])
+
+        if not non_embedding: 
+            n_params += tree_flatten(self.wpe).size
+
+        return n_params

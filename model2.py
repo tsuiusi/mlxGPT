@@ -156,6 +156,7 @@ class GPT(nn.Module):
             if hasattr(block.attn, "bias"):
                 block.attn.bias = block.attn.bias[: ,: , :block_size, :block_size]
 
+    # Write the from_pretrained function
     @classmethod
     def from_pretrained(cls, model_type, override_args=None):
         assert model_type in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
@@ -163,39 +164,44 @@ class GPT(nn.Module):
         # only dropout can be overridden see more notes below
         assert all(k == 'dropout' for k in override_args)
         from transformers import GPT2LMHeadModel
-        print('loading weights from pretrained gpt: %s' % model_type)
-
+        print("loading weights from pretrained gpt: %s" % model_type)
         # n_layer, n_head and n_embd are determined from model_type
         config_args = {
-                'gpt2':         dict(n_layer=12, n_head=12, n_embd=768),    # 124M params
-                'gpt2-medium':  dict(n_layer=24, n_head=16, n_embd=1024),   # 350M params
-                'gpt2-large':   dict(n_layer=36, n_head=20, n_embd=1280),   # 774M params
-                'gpt2-xl':      dict(n_layer=48, n_head=25, n_embd=1600),   # 1558M params
+            'gpt2':         dict(n_layer=12, n_head=12, n_embd=768),  # 124M params
+            'gpt2-medium':  dict(n_layer=24, n_head=16, n_embd=1024), # 350M params
+            'gpt2-large':   dict(n_layer=36, n_head=20, n_embd=1280), # 774M params
+            'gpt2-xl':      dict(n_layer=48, n_head=25, n_embd=1600), # 1558M params
         }[model_type]
-        print('force vocab_size=50247, block_size=1024, bias=True')
-        config_args['vocab_size'] = 50247 # always 50257 for GPT model checkpoints
+        print("forcing vocab_size=50257, block_size=1024, bias=True")
+        config_args['vocab_size'] = 50257 # always 50257 for GPT model checkpoints
         config_args['block_size'] = 1024 # always 1024 for GPT model checkpoints
         config_args['bias'] = True # always True for GPT model checkpoints
         # we can override the dropout rate, if desired
         if 'dropout' in override_args:
-            print(f'overriding dropout rate to {override_args["dropout"]}')
+            print(f"overriding dropout rate to {override_args['dropout']}")
             config_args['dropout'] = override_args['dropout']
-        # create a from-scratch initialized minGPT model
-        config = GPTConfig(**config_args)
-        model = GPT(config)
-        sd = model.state()
-        sd_keys = sd.keys()
-        sd_keys = [k for k in sd_keys if not k.endswith('.attn.bias')] # discard this mask / buffer, not a param
+ 
+    # write these two functions
+    def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+        pass
 
-        # init a huggingface/transformers model
-        model_hf = GPT2LMHeadModel.from_pretrained(model_type)
-        sd_hf = model_hf.state_dict()
+    def estimate_mfu(self, fwdbwd_per_iter, dt):
+        """ estimate model flops utilization (MFU) in units of A100 bfloat16 peak FLOPS """
+        # first estimate the number of flops we do per iteration.
+        # see PaLM paper Appendix B as ref: https://arxiv.org/abs/2204.02311
+        N = self.get_num_params()
+        cfg = self.config
+        L, H, Q, T = cfg.n_layer, cfg.n_head, cfg.n_embd//cfg.n_head, cfg.block_size
+        flops_per_token = 6*N + 12*L*H*Q*T
+        flops_per_fwdbwd = flops_per_token * T
+        flops_per_iter = flops_per_fwdbwd * fwdbwd_per_iter
+        # express our flops throughput as ratio of A100 bfloat16 peak flops
+        flops_achieved = flops_per_iter * (1.0/dt) # per second
+        flops_promised = 312e12 # A100 GPU bfloat16 peak flops is 312 TFLOPS
+        mfu = flops_achieved / flops_promised
+        return mfu 
 
-        # copy while ensuring all of the parameters are aligned and match in names and shapes
-        sd_keys_hf = sd_hf.keys()
-        sd_keys_hf = [k for k in sd_keys_hf if not k.endswith('attn.masked_bias')] # ignore these, just a buffer
-        
-        
     def generate(self, idx, max_new_tokens=512, temp=1.0, top_k=None):
-        for _
+        pass
+
 

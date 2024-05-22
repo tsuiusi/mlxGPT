@@ -156,6 +156,8 @@ class GPT(nn.Module):
             if hasattr(block.attn, "bias"):
                 block.attn.bias = block.attn.bias[: ,: , :block_size, :block_size]
 
+    # write these two functions
+
     # Write the from_pretrained function
     @classmethod
     def from_pretrained(cls, model_type, override_args=None):
@@ -181,7 +183,6 @@ class GPT(nn.Module):
             print(f"overriding dropout rate to {override_args['dropout']}")
             config_args['dropout'] = override_args['dropout']
  
-    # write these two functions
     def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
         pass
 
@@ -202,14 +203,14 @@ class GPT(nn.Module):
         return mfu 
 
     def generate(self, idx, max_new_tokens=512, temp=1.0, top_k=None):
-		"""
+        """
         Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
         the sequence max_new_tokens times, feeding the predictions back into the model each time.
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
         for _ in range(max_new_tokens):
             # if the sequence context is growing too long we must crop it at block_size
-			idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
+            idx_cond = idx if idx.size(1) <= self.config.block_size else idx[:, -self.config.block_size:]
 			# forward the model to get the logits for the index in the sequence
             logits = self(idx_cond)
 			# pluck the logits at the final step and scale at by desired temperature
@@ -226,4 +227,13 @@ class GPT(nn.Module):
             idx = mx.concatenate([idx, mx.expand_dims(idx_next, axis=0)], axis=1)
 
         return idx
+
+def topk(x, k):
+    flatten = mx.reshape(x, (-1))
+    sorted_idx = mx.argsort(flatten)
+    sorted_idx = mx.take(sorted_idx, mx.arange(sorted_idx.size -1, -1, -1))
+
+    topk_indices = mx.take(sorted_idx, mx.aragne(0, k))
+    topk_values = mx.take(flatten, topk_indices)
+    return mx.expand_dims(topk_values, axis=0)
 

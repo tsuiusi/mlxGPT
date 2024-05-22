@@ -93,5 +93,17 @@ class GPT(nn.Module):
         assert config.vocab_size is not None
         assert config.block_size is not None
         self.config = config
-        
-        self.transformer = 
+       
+        self.wte = nn.Embedding(config.vocab_size, config.n_embd)
+        self.wpe = nn.Embedding(config.vocab_size, config.n_embd)
+        self.drop = nn.Dropout(config.dropout)
+        self.transformer = [Block(config) for _ in range(config.n_layer)]
+        self.ln_f = LayerNorm(config.n_embd, bias=config.bias)
+
+        self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+
+		# with weight tying when using torch.compile() some warnings get generated:
+        # "UserWarning: functional_call was passed multiple values for tied weights.
+        # This behavior is deprecated and will be an error in future versions"
+        # not 100% sure what this is, so far seems to be harmless. TODO investigate
+		self.wte.weight = self.lm_head.weight

@@ -120,3 +120,43 @@ class GPT(nn.Module):
             n_params += tree_flatten(self.wpe).size
 
         return n_params
+
+    def __call__(self, idx, targets=None):
+        b, t = idx.size()
+        assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
+        pos = mx.arange(0, t, 1, dtype=idx.dtype) # shape (t)
+
+        # forward the GPT model itself
+        tok_embd = self.wte(idx) # token embeddings of shape (b, t, n_embd)
+        pos_embd = self.wpe(idx) # position embeddings of shape (t, n_embd)
+        x = self.drop(tok_emb +  pos_emb)
+        for block in self.transformer:
+            x = block(x)
+        x = self.ln_f(x)
+
+        if targets is not None:
+            # if we are given some desired targets also calculate the loss
+            logits = self.lm_head(x)
+            loss = nn.losses.cross_entropy(logits.reshape(-1, logits.shape[-1]), targets.reshape(-1))
+        else:
+             # inference-time mini-optimization: only forward the lm_head on the very last position
+            logits = self.lm_head(x[:, [-1], :])  # note: using list [-1] to preserve the time dim
+            loss = None
+
+        return logits, loss
+
+    def crop_block_size(self, block_size):
+		# model surgery to decrease the block size if necessary
+		# e.g. we may load the GPT2 pretrained model checkpoint (block size 1024)
+		# but want to use a smaller block size for some smaller, simpler model
+        assert block_size <= self.config.block_size
+        self.config.block_size = block_size
+        self.wpe = self.wpe.parameters()["weight"][:block_size]
+        for block in self.transformers:
+            if hasattr(block.attn, "bias"):
+                block.attn.bias = block.attn.bias[: ,: , :block_size, :block_size]
+                
+        
+    def generate(self, idx, max_new_tokens=512, temp=1.0, top_k=None):
+        for _
+

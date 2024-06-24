@@ -224,6 +224,12 @@ class GPT(nn.Module):
 # --------------------------------------------------------------------------------------------
  
     def configure_optimizers(self, weight_decay, learning_rate, betas, device_type):
+        """
+        point of this is to filter out the parameters that need gradients, then ensure that only 2D parameters will be decayed
+        i.e. all weight tensors in matmuls + embeddings decay, all biases and layernorms don't.
+
+        also decides if you use fused adamw or adamw, but that's some cuda stuff
+        """
         pass
 
     def estimate_mfu(self, fwdbwd_per_iter, dt):

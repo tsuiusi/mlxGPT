@@ -31,7 +31,6 @@ class LayerNorm(nn.Module):
             return (self.weight * x) if "weight" in self else x
 
 
-
 class CausalSelfAttention(nn.Module):
     def __init__(self, config):
         super().__init__()

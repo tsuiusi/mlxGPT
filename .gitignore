@@ -165,3 +165,4 @@ gpt2.npz
 nanoGPT_mlx
 shakespeare
 openwebtext
+*.swp

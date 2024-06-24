@@ -39,7 +39,7 @@ n_layer = 12
 dropout = 0.0
 
 # Data
-dataset = get_dataset()
+dataset = 'datasets/' + get_dataset() # fix this when i have wifi to check the methods
 out_dir = '~/code/mlxGPT/'
 gradient_accumulation_steps = 5*8
 batch_size = 12

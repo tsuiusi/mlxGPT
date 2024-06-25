@@ -1,9 +1,5 @@
 # mlxGPT: Rewrite of Karpathy's NanoGPT in mlx
-
-> Rewrite everything from scratch so i have a working LM then GPT2, then rewrite nanoGPT.
-
-(12, 1024, 50247) -> (12, 1024, 50247) (12, 1024, 50247) (12, 1024, 50247) -> 
-
+> Currently it isn't perfect but it sort of? learns when I run it; albeit a bit slowly. I'm taking a break from this project to level up so I can write better code. 
 
 ## To do:
 * Find/gather a dataset to train
@@ -21,6 +17,8 @@ Components of NanoGPT:
 * Causal Self-Attention
 * Multi-Layer Perceptron (MLP)
 * GPT
+
+(12, 1024, 50247) -> (12, 1024, 50247) (12, 1024, 50247) (12, 1024, 50247) -> 
 
 ### LayerNorm
 * https://arxiv.org/pdf/1607.06450.pdf

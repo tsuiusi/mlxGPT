@@ -70,7 +70,7 @@ stats = get_stats_list(tokens)
 # print(sorted(((v, k) for k, v in stats.items()), reverse=True))
 print(stats)
 
-best = max(stats, keys=stats.get)
+best = max(stats, key=stats.get)
 
 print(best)
 
@@ -86,6 +86,17 @@ def merge(ids, pair, idx):
             i += 1
     return newids
 
-tokens2 = merge(stats, best, 256)
-print(tokens2)
+ids = list(tokens)
+vocab_size = 276
+num_merges = vocab_size - 256
 
+merges = {}
+for i in range(num_merges):
+    stats = get_stats_list(ids)
+    pair = max(stats, key=stats.get)
+    idx = 256 + i
+    print(f'merging {pair} into {idx}')
+    ids = merge(ids, pair, idx)
+    merges[pair] = idx
+
+print(merges)

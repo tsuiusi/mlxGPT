@@ -12,3 +12,7 @@ so basically
 2. add the most freqeunt pair to the vocab
 3. keep doing that for *n* times
 
+## Making the tokenizer
+1. Train
+2. Encode
+3. Decode

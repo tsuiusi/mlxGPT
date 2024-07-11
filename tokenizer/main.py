@@ -46,13 +46,39 @@ class Tokenizer():
             self.stats = self._update_stats(text)            
 
     def encode(self, text):
-        ids = list(text)
-        for i, merge in enumerate(self.merges):
-            ids = merge(ids, tuple(merge), len(self.vocab) + i)
-        return [self.vocab.index(token) for token in ids]
+        encoded = []
+        i = 0
+        while i < len(text):
+            longest_match = None
+            longest_match_length = 0
+            for token_id, token in self.vocab.items():
+                if text.startswith(token, i):
+                    if len(token) > longest_match_length:
+                        longest_match = token_id
+                        longest_match_length = len(token)
+            
+            if longest_match is not None:
+                encoded.append(longest_match)
+                i += longest_match_length
+            else:
+                # If no match found, you might want to handle unknown characters
+                # For now, we'll just skip it
+                i += 1
+        
+        return encoded
 
     def decode(self, ids):
         return ''.join(self.vocab[id] for id in ids)
+
+    def load(self, filename):
+        with open(filename, 'r') as f:
+            self.vocab = json.load(f) 
+        print(f'Vocab size: {len(self.vocab)}') 
+
+    def save(self, filename):
+        with open(filename, 'w') as f:
+            json.dump(self.vocab, f)
+        print(f'Saved as {filename + ".json"}')
 
     def _build_vocab(self, charset, stats):
         vocab = {}
@@ -87,14 +113,17 @@ class Tokenizer():
             i += count
 
         return stats
-
+    
 tokenizer = Tokenizer()
 
-with open('beemovie.txt', 'r') as f:
+with open('input.txt', 'r') as f:
     text = f.read()
 
-tokenizer.train(text, 1000)
+# tokenizer.train(text, 1000)
+# tokenizer.save('tokens.json')
+tokenizer.load('tokens.json')
 
-print(tokenizer.vocab)
+print(enc := tokenizer.encode('"Watashi Dake Yuurei" (ワタシダケユウレイ , lit. "I\'m the Only Ghost") is an insert song for the tenth episode of the anime series, Bocchi the Rock!. It is performed by SICK HACK and sung by Kikuri Hiroi. The song was released on April 26, 2023, as a part of a bonus CD in Blu-ray and DVD volume 5.[1]'))
 
 
+print(tokenizer.decode(enc))

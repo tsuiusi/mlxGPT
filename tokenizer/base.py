@@ -26,7 +26,7 @@ def merge(pair, v_in):
 
     return v_out
 
-def get_stats(vocab_list):
+def get_stats_list(vocab_list):
     pairs = collections.defaultdict(int)
 
     for word in vocab_list:

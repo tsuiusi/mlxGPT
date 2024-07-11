@@ -12,6 +12,8 @@ so basically
 2. add the most freqeunt pair to the vocab
 3. keep doing that for *n* times
 
+two separate dicts - one counting the frequency of each token pair, another keeping track of vocab + indices
+
 ## Making the tokenizer
 1. Train
 2. Encode

@@ -5,7 +5,7 @@
 2. Count all symbol pair s and replace reach occurrence of the most frequent pair (A, B) into AB; new symbol introduces a new symbol which represents an n-gram
 3. Merge frequent words 
 
-![bpe](bpe.png) 
+![bpe](datasets/bpe.png) 
 
 so basically 
 1. count the frequency of each pair

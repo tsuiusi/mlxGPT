@@ -114,16 +114,20 @@ class Tokenizer():
 
         return stats
     
-tokenizer = Tokenizer()
+def main():
+    tokenizer = Tokenizer()
 
-with open('input.txt', 'r') as f:
-    text = f.read()
+    with open('input.txt', 'r') as f:
+        text = f.read()
 
-# tokenizer.train(text, 1000)
-# tokenizer.save('tokens.json')
-tokenizer.load('tokens.json')
+    # tokenizer.train(text, 1000)
+    # tokenizer.save('tokens.json')
+    tokenizer.load('tokens.json')
 
-print(enc := tokenizer.encode('"Watashi Dake Yuurei" (ワタシダケユウレイ , lit. "I\'m the Only Ghost") is an insert song for the tenth episode of the anime series, Bocchi the Rock!. It is performed by SICK HACK and sung by Kikuri Hiroi. The song was released on April 26, 2023, as a part of a bonus CD in Blu-ray and DVD volume 5.[1]'))
+    print(enc := tokenizer.encode('"Watashi Dake Yuurei" (ワタシダケユウレイ , lit. "I\'m the Only Ghost") is an insert song for the tenth episode of the anime series, Bocchi the Rock!. It is performed by SICK HACK and sung by Kikuri Hiroi. The song was released on April 26, 2023, as a part of a bonus CD in Blu-ray and DVD volume 5.[1]'))
 
 
-print(tokenizer.decode(enc))
+    print(tokenizer.decode(enc))
+
+if __name__ == "__main__":
+    main()
